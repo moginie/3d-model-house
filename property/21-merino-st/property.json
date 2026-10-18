@@ -1,0 +1,544 @@
+{
+  "source": "https://www.realestate.com.au/property/21-merino-st-harristown-qld-4350/",
+  "address": "21 Merino Street, Harristown, Qld 4350",
+  "status": "Off market",
+  "type": "House",
+  "storeys": 1,
+  "bedrooms": 4,
+  "bathrooms": 1,
+  "carSpaces": 1,
+  "floorAreaSqm": 153.88,
+  "shedAreaSqm": 9,
+  "carportAreaSqm": 31.34,
+  "landAreaSqm": 587,
+  "block": "about 29 m by 20 m",
+  "lotPlan": "156 RP123045",
+  "landUse": "Residential",
+  "council": "Toowoomba Regional Council",
+  "overlays": {
+    "bushfire": null,
+    "flood": null,
+    "heritage": null
+  },
+  "features": [
+    "fully fenced",
+    "garden",
+    "open plan",
+    "solar panels"
+  ],
+  "yearBuilt": null,
+  "geocode": {
+    "latitude": -27.58266223,
+    "longitude": 151.93018381
+  },
+  "boundary": {
+    "edgeLengthsM": [
+      29,
+      20,
+      29,
+      20
+    ],
+    "geometry": [
+      {
+        "lat": -27.582807388,
+        "lng": 151.930260814
+      },
+      {
+        "lat": -27.582547393,
+        "lng": 151.930306472
+      },
+      {
+        "lat": -27.582519327,
+        "lng": 151.930105187
+      },
+      {
+        "lat": -27.582779344,
+        "lng": 151.930059552
+      }
+    ]
+  },
+  "energyScore": {
+    "score": 7.7,
+    "suburbBenchmark": 5.22
+  },
+  "valueRange": {
+    "low": 730000,
+    "high": 870000,
+    "asOf": "2026-09-28",
+    "note": "Page shows the range. The midpoint estimate is behind sign-in."
+  },
+  "rentalEstimateWeekly": {
+    "low": 590,
+    "mid": 645,
+    "high": 700,
+    "asOf": "2026-10-12",
+    "confidence": "high"
+  },
+  "history": [
+    {
+      "date": "2025-03-07",
+      "event": "leased",
+      "price": "$620 per week",
+      "agency": "Raine & Horne Toowoomba"
+    },
+    {
+      "date": "2025-01-28",
+      "event": "sold",
+      "price": "$630,000",
+      "agency": "Raine & Horne Toowoomba"
+    },
+    {
+      "date": "2021-02-05",
+      "event": "sold",
+      "price": "$385,000",
+      "agency": "Ray White Toowoomba"
+    },
+    {
+      "date": "2015-04-15",
+      "event": "sold",
+      "price": "$371,000",
+      "agency": "Colliers Toowoomba"
+    },
+    {
+      "date": "2011-10-22",
+      "event": "sold",
+      "price": "$274,000",
+      "agency": "Webster Cavanagh Marsden"
+    },
+    {
+      "date": "2001-09-16",
+      "event": "sold",
+      "price": "$105,000",
+      "agency": null
+    }
+  ],
+  "roomsFrom2025Floorplan": [
+    {
+      "name": "Alfresco living",
+      "size": "7.3 x 4.4 m"
+    },
+    {
+      "name": "Kitchen",
+      "size": null
+    },
+    {
+      "name": "Lounge",
+      "size": "5.0 x 3.6 m"
+    },
+    {
+      "name": "Porch",
+      "size": "5.0 x 3.6 m"
+    },
+    {
+      "name": "Bed 4 / living",
+      "size": "3.1 x 7.2 m"
+    },
+    {
+      "name": "Bed 3",
+      "size": "2.6 x 3.6 m"
+    },
+    {
+      "name": "Bed 2",
+      "size": "3.4 x 2.8 m"
+    },
+    {
+      "name": "Bed 1",
+      "size": "3.7 x 2.8 m",
+      "note": "2025 plan mislabels this second bed as Bed 2. 2021 plan labels it Bed 1."
+    },
+    {
+      "name": "Double carport",
+      "size": "5.7 x 5.7 m"
+    },
+    {
+      "name": "Shed",
+      "size": "3.0 x 3.0 m"
+    }
+  ],
+  "alsoIncludes": [
+    "laundry",
+    "separate WC",
+    "bathroom",
+    "pantry",
+    "fridge recess",
+    "robes"
+  ],
+  "orientation": "2025 floor plan has north toward the shed and alfresco, so the porch and carport face the street to the south.",
+  "media": {
+    "note": "61 unique files. The page counts 69 photos and 4 floor plans because the 2025 sale and lease listings repeat the same 11 photos and floor plan.",
+    "folders": {
+      "images/2025": "11 photos + floor plan, Raine & Horne, February 2025. Current appearance.",
+      "images/2021": "16 photos + floor plan, Ray White, January 2021.",
+      "images/2015": "16 photos + floor plan, Colliers, April 2015. Older plan with slightly different room labels.",
+      "images/2011": "15 photos, September 2011. No floor plan."
+    },
+    "files": [
+      {
+        "folder": "2025",
+        "file": "01.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "02.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "03.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "04.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "05.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "06.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "07.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "08.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "09.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "10.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "11.jpg",
+        "type": "image",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2025",
+        "file": "floorplan.jpg",
+        "type": "floorplan",
+        "listingId": "441133608"
+      },
+      {
+        "folder": "2021",
+        "file": "01.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "02.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "03.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "04.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "05.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "06.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "07.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "08.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "09.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "10.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "11.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "12.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "13.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "14.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "15.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "16.jpg",
+        "type": "image",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2021",
+        "file": "floorplan.jpg",
+        "type": "floorplan",
+        "listingId": "135331450"
+      },
+      {
+        "folder": "2015",
+        "file": "01.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "02.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "03.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "04.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "05.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "06.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "07.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "08.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "09.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "10.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "11.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "12.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "13.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "14.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "15.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "16.jpg",
+        "type": "image",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2015",
+        "file": "floorplan.jpg",
+        "type": "floorplan",
+        "listingId": "119504055"
+      },
+      {
+        "folder": "2011",
+        "file": "01.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "02.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "03.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "04.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "05.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "06.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "07.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "08.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "09.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "10.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "11.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "12.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "13.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "14.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      },
+      {
+        "folder": "2011",
+        "file": "15.jpg",
+        "type": "image",
+        "listingId": "107930686"
+      }
+    ]
+  }
+}
