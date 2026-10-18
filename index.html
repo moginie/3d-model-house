@@ -8,14 +8,14 @@
     html, body { margin: 0; height: 100%; background: #c9d7e4; font-family: "Segoe UI", Helvetica, Arial, sans-serif; }
     canvas { display: block; }
     #panel {
-      position: fixed; top: 16px; left: 16px; width: 280px;
+      position: fixed; top: 16px; left: 16px; width: 290px;
       background: rgba(22, 24, 28, 0.88); color: #f4f1ea;
       border-radius: 12px; padding: 14px 16px 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
     #panel h1 { font-size: 16px; margin: 0 0 2px; font-weight: 650; }
     #panel p { margin: 0 0 10px; color: #c8c2b6; font-size: 12px; line-height: 1.4; }
-    #views, #toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     button {
       background: #3a3f48; color: #fff; border: 0; border-radius: 7px;
       padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer;
@@ -27,21 +27,20 @@
 </head>
 <body>
   <div id="panel">
-    <h1>21 Merino Street</h1>
-    <p>Harristown, single-storey house. Rooms use the 2025 floor plan. Porch depth is the 2021 measurement, 1.7 m.</p>
-    <div id="views">
+    <h1>21 Merino Street, Harristown</h1>
+    <p>Walls, doors and windows are placed from the 2025 floor plan, measured at its drawn scale.</p>
+    <div class="row">
       <button id="cam-front" class="active">Front</button>
       <button id="cam-rear">Rear</button>
       <button id="cam-top">Top</button>
     </div>
-    <div id="toggles">
+    <div class="row">
       <button id="toggle-roof" class="active">Roof on</button>
       <button id="toggle-labels" class="active">Labels on</button>
     </div>
     <div id="facts">
-      <b>Internal</b> 154 m² &nbsp; <b>Land</b> 587 m²<br>
-      4 bed · 1 bath · carport · alfresco · shed<br>
-      Block about 20 m wide × 29 m deep
+      <b>Internal</b> 153.9 m² &nbsp; <b>Carport</b> 31.3 m² &nbsp; <b>Shed</b> 9 m²<br>
+      <b>House</b> 15.7 × 7.4 m &nbsp; <b>Land</b> 20 × 29 m (587 m²)
     </div>
   </div>
   <script type="importmap">
@@ -56,358 +55,341 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-const WALL_H = 2.55;
-const WALL_T = 0.12;
+// Plan coordinates are pixels on the 2400 px floor plan image (north up).
+// Scale is set by Bed 4 (3.1 × 7.2 m) and the lounge (5.0 m).
+const S = 93.5;
+const LOT_X0 = 175, LOT_Y0 = 98;
+const X = (px) => (px - LOT_X0) / S;
+const Z = (py) => (py - LOT_Y0) / S;
+const M = (px) => px / S;
 
-const brick = new THREE.MeshStandardMaterial({ color: 0xd9c7a2, roughness: 0.92 });
-const brickDark = new THREE.MeshStandardMaterial({ color: 0xc2ae88, roughness: 0.9 });
-const tile = new THREE.MeshStandardMaterial({ color: 0x8e9194, roughness: 0.8, side: THREE.DoubleSide });
-const metal = new THREE.MeshStandardMaterial({ color: 0xd5d8dc, roughness: 0.45, metalness: 0.25, side: THREE.DoubleSide });
-const metalDark = new THREE.MeshStandardMaterial({ color: 0xb7bcc2, roughness: 0.5, metalness: 0.2 });
-const timber = new THREE.MeshStandardMaterial({ color: 0xa67b52, roughness: 0.8 });
-const tileFloor = new THREE.MeshStandardMaterial({ color: 0x6f736f, roughness: 0.7 });
-const deck = new THREE.MeshStandardMaterial({ color: 0xcbb892, roughness: 0.85 });
-const concrete = new THREE.MeshStandardMaterial({ color: 0xc5c1b8, roughness: 0.95 });
-const grass = new THREE.MeshStandardMaterial({ color: 0x6d8a45, roughness: 1 });
-const road = new THREE.MeshStandardMaterial({ color: 0x5c6168, roughness: 0.95 });
-const glass = new THREE.MeshStandardMaterial({ color: 0x9fd0e4, roughness: 0.15, transparent: true, opacity: 0.45 });
-const frame = new THREE.MeshStandardMaterial({ color: 0xf3f4f5, roughness: 0.6 });
-const solar = new THREE.MeshStandardMaterial({ color: 0x1d2630, roughness: 0.4, metalness: 0.3 });
-const fenceMat = new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.7 });
-const trim = new THREE.MeshStandardMaterial({ color: 0x4e5156, roughness: 0.7 });
-for (const m of [brick, brickDark, tile, metal, metalDark, timber, tileFloor, deck, concrete, grass, road, glass, frame, solar, fenceMat, trim]) {
-  m.side = THREE.DoubleSide;
-}
+const FLOOR = 0.15;
+const CEIL = 2.4;
+const EXT_T = 0.22;
+const INT_T = 0.1;
+
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, side: THREE.DoubleSide, ...o });
+const brick = mat(0xd8c49c, { roughness: 0.95 });
+const plaster = mat(0xf1eee8);
+const tile = mat(0x7f8487, { roughness: 0.75 });
+const colorbond = mat(0xd9dcdf, { roughness: 0.45, metalness: 0.25 });
+const steel = mat(0xb4b9bf, { roughness: 0.5, metalness: 0.3 });
+const timber = mat(0x8a5f3c);
+const wetTile = mat(0x55595a, { roughness: 0.6 });
+const deck = mat(0xbfae8d);
+const concrete = mat(0xc7c3ba, { roughness: 0.95 });
+const grass = mat(0x6f8c47, { roughness: 1 });
+const road = mat(0x575c62, { roughness: 0.95 });
+const glass = mat(0x9fcfe2, { roughness: 0.1, transparent: true, opacity: 0.4 });
+const frame = mat(0xf2f2f0, { roughness: 0.55 });
+const solar = mat(0x1b2530, { roughness: 0.35, metalness: 0.4 });
+const fascia = mat(0x4b4e53);
+const fenceGrey = mat(0x6c7176, { roughness: 0.6, metalness: 0.2 });
+const fenceWhite = mat(0xf6f6f4, { roughness: 0.6 });
+const joinery = mat(0xfafafa, { roughness: 0.4 });
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc5d5e4);
-scene.fog = new THREE.Fog(0xc5d5e4, 48, 90);
 
-const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 300);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI / 2.05;
-controls.target.set(10, 1.2, 14);
 
-scene.add(new THREE.HemisphereLight(0xfff4e0, 0x6a7a48, 0.85));
-const sun = new THREE.DirectionalLight(0xfff1d6, 1.35);
-sun.position.set(-12, 22, 8);
+scene.add(new THREE.HemisphereLight(0xfff6e6, 0x6f7d55, 0.9));
+const sun = new THREE.DirectionalLight(0xfff1d6, 1.4);
+sun.position.set(-14, 26, -8);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -25;
-sun.shadow.camera.right = 25;
-sun.shadow.camera.top = 25;
-sun.shadow.camera.bottom = -25;
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 60;
-scene.add(sun);
+Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 70 });
+sun.target.position.set(10, 0, 14);
+scene.add(sun, sun.target);
 
-const root = new THREE.Group();
-scene.add(root);
-// Mirror east-west so the street view matches the photos: carport on the left.
-const house = new THREE.Group();
-house.scale.x = -1;
-house.position.x = 20;
-root.add(house);
+const world = new THREE.Group();
 const roofs = new THREE.Group();
-house.add(roofs);
 const labels = new THREE.Group();
-root.add(labels);
+scene.add(world, roofs, labels);
 
-function mesh(geo, mat, x, y, z, parent = house) {
-  const m = new THREE.Mesh(geo, mat);
+function box(w, h, d, x, y, z, material, parent = world) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   m.position.set(x, y, z);
-  m.castShadow = true;
-  m.receiveShadow = true;
+  m.castShadow = m.receiveShadow = true;
   parent.add(m);
   return m;
 }
-function box(w, h, d, x, y, z, mat, parent = root) {
-  return mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, parent);
+function tris(points, material, parent = roofs) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(points.flat(), 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, material);
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
 }
-function label(text, x, z) {
+
+// ---------- Walls ----------
+// axis "h": runs east-west along plan y = k, from x = a to b.
+// axis "v": runs north-south along plan x = k, from y = a to b.
+// open: [start, end, kind] in plan px. kind: "door" | "window" | "highWindow" | "slider".
+const OPENING = {
+  door: { sill: 0, head: 2.04 },
+  slider: { sill: 0, head: 2.1 },
+  window: { sill: 0.9, head: 2.1 },
+  highWindow: { sill: 1.5, head: 2.1 },
+  kitchen: { sill: 1.05, head: 2.1 },
+};
+function wall(axis, k, a, b, { t = INT_T, h = CEIL, open = [], material = plaster, outer = brick, glazed = true } = {}) {
+  const piece = (s, e, y0, y1, m) => {
+    if (e - s < 1 || y1 - y0 < 0.01) return;
+    const len = M(e - s), mid = (s + e) / 2, hh = y1 - y0, cy = FLOOR + y0 + hh / 2;
+    if (axis === "h") box(len, hh, t, X(mid), cy, Z(k), m);
+    else box(t, hh, len, X(k), cy, Z(mid), m);
+  };
+  const m = t >= EXT_T ? outer : material;
+  let cur = a;
+  for (const [s, e, kind] of [...open].sort((p, q) => p[0] - q[0])) {
+    piece(cur, s, 0, h, m);
+    const { sill, head } = OPENING[kind];
+    piece(s, e, 0, sill, m);
+    piece(s, e, head, h, m);
+    if (glazed && kind !== "door") {
+      const len = M(e - s), mid = (s + e) / 2, hh = head - sill, cy = FLOOR + sill + hh / 2;
+      if (axis === "h") {
+        box(len, hh, 0.03, X(mid), cy, Z(k), glass);
+        box(len, 0.05, t + 0.02, X(mid), FLOOR + sill, Z(k), frame);
+        box(len, 0.05, t + 0.02, X(mid), FLOOR + head, Z(k), frame);
+      } else {
+        box(0.03, hh, len, X(k), cy, Z(mid), glass);
+        box(t + 0.02, 0.05, len, X(k), FLOOR + sill, Z(mid), frame);
+        box(t + 0.02, 0.05, len, X(k), FLOOR + head, Z(mid), frame);
+      }
+    }
+    cur = e;
+  }
+  piece(cur, b, 0, h, m);
+}
+
+// House shell: x 446–1912, y 672–1366 (15.7 × 7.4 m).
+wall("h", 676, 446, 1913, {
+  t: EXT_T,
+  open: [
+    [867, 1153, "kitchen"],
+    [1257, 1319, "door"],
+    [1350, 1392, "highWindow"],
+    [1420, 1458, "highWindow"],
+    [1514, 1548, "highWindow"],
+    [1737, 1820, "window"],
+  ],
+});
+wall("v", 450, 672, 1366, { t: EXT_T, open: [[954, 1038, "window"]] });
+wall("v", 1907, 672, 1366, { t: EXT_T, open: [[796, 880, "window"], [1186, 1271, "window"]] });
+// South: Bed 4 and the bedroom wing sit on y 1361; the lounge is set back to y 1282 behind the porch.
+wall("h", 1361, 446, 757, { t: EXT_T, open: [[474, 717, "window"]] });
+wall("h", 1282, 748, 1232, { t: EXT_T, open: [[844, 1013, "window"], [1132, 1212, "door"]] });
+wall("h", 1361, 1223, 1913, { t: EXT_T, open: [[1292, 1404, "window"], [1664, 1776, "window"]] });
+
+// Front door leaf.
+box(M(80), 2.04, 0.05, X(1172), FLOOR + 1.02, Z(1282) + 0.02, mat(0x5a4636));
+
+// Interior walls.
+wall("v", 752, 672, 1366, { open: [[865, 926, "door"]] });            // Bed 4 | kitchen & lounge
+wall("h", 907, 446, 529);                                              // Bed 4 robe, south
+wall("v", 668, 672, 737);                                              // Bed 4 robe, east return
+wall("v", 1227, 672, 1366, { open: [[814, 886, "door"]] });           // kitchen & lounge | laundry & bed 2
+wall("v", 1014, 870, 949);                                             // fridge recess
+wall("v", 1100, 870, 949);                                             // pantry
+wall("h", 870, 1100, 1227);                                            // pantry top
+wall("h", 941, 1009, 1227);                                            // fridge + pantry, south
+wall("h", 941, 1227, 1661, { open: [[1232, 1307, "door"], [1405, 1480, "door"], [1495, 1565, "door"]] });
+wall("v", 1399, 672, 945);                                             // laundry | WC
+wall("v", 1484, 672, 945);                                             // WC | bath
+wall("v", 1600, 672, 834);                                             // bath linen
+wall("v", 1655, 672, 1037, { open: [[956, 1017, "door"]] });          // Bed 3, west
+wall("h", 1032, 1223, 1913, { open: [[1469, 1530, "door"], [1566, 1628, "door"]] });
+wall("v", 1552, 1028, 1366);                                           // Bed 2 | Bed 1
+
+// Built-in robes.
+box(M(54), 2.2, M(183), X(1520), FLOOR + 1.1, Z(1264), joinery);      // Bed 2 robe
+box(M(227), 2.2, M(60), X(1790), FLOOR + 1.1, Z(1068), joinery);      // Bed 1 robe
+box(M(210), 2.2, M(220), X(560), FLOOR + 1.1, Z(793), joinery);       // Bed 4 robe
+// Kitchen benches along the north wall and east return.
+box(M(370), 0.9, 0.6, X(1010), FLOOR + 0.45, Z(681) + 0.3, joinery);
+box(M(370), 0.04, 0.62, X(1010), FLOOR + 0.92, Z(681) + 0.31, mat(0x2b2b2b, { roughness: 0.3 }));
+box(0.6, 0.9, M(150), X(1223) - 0.3, FLOOR + 0.45, Z(756), joinery);
+
+// ---------- Floors and labels ----------
+function label(name, dims, x, z) {
   const c = document.createElement("canvas");
-  c.width = 512; c.height = 128;
+  c.width = 512; c.height = dims ? 168 : 112;
   const g = c.getContext("2d");
-  g.fillStyle = "rgba(20,20,20,0.72)";
-  roundRect(g, 8, 24, 496, 80, 16); g.fill();
-  g.fillStyle = "#fff";
-  g.font = "600 36px sans-serif";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillText(text, 256, 64);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
-  sprite.position.set(20 - x, 0.35, z);
-  sprite.scale.set(2.8, 0.7, 1);
-  labels.add(sprite);
+  g.fillStyle = "rgba(18,18,20,0.78)";
+  g.beginPath(); g.roundRect(6, 6, 500, c.height - 12, 18); g.fill();
+  g.fillStyle = "#fff"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "600 44px sans-serif";
+  g.fillText(name, 256, dims ? 58 : 56);
+  if (dims) { g.fillStyle = "#e7c89a"; g.font = "500 38px sans-serif"; g.fillText(dims, 256, 116); }
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+  sp.renderOrder = 10;
+  sp.position.set(x, FLOOR + 0.6, z);
+  sp.scale.set(2.3, 2.3 * c.height / 512, 1);
+  labels.add(sp);
 }
-function roundRect(g, x, y, w, h, r) {
-  g.beginPath();
-  g.moveTo(x + r, y);
-  g.arcTo(x + w, y, x + w, y + h, r);
-  g.arcTo(x + w, y + h, x, y + h, r);
-  g.arcTo(x, y + h, x, y, r);
-  g.arcTo(x, y, x + w, y, r);
-  g.closePath();
+function room(name, dims, x0, y0, x1, y1, material) {
+  box(M(x1 - x0), 0.04, M(y1 - y0), X((x0 + x1) / 2), FLOOR + 0.02, Z((y0 + y1) / 2), material);
+  if (name) label(name, dims, X((x0 + x1) / 2), Z((y0 + y1) / 2));
+}
+// Slab under the enclosed house.
+box(M(1466), FLOOR, M(694), X(1179), FLOOR / 2, Z(1019), concrete);
+box(M(475), FLOOR, M(84), X(990), FLOOR / 2, Z(1324), concrete);
+
+room("Bed 4 / Living", "3.1 × 7.2 m", 455, 907, 748, 1356, timber);
+room(null, null, 455, 681, 748, 907, timber);
+room("Kitchen", null, 757, 681, 1223, 946, wetTile);
+room("Lounge", "5.0 × 3.6 m", 757, 946, 1223, 1278, timber);
+room("Laundry", null, 1231, 681, 1395, 937, wetTile);
+room("WC", null, 1404, 681, 1480, 937, wetTile);
+room("Bath", null, 1489, 681, 1651, 937, wetTile);
+room(null, null, 1231, 945, 1651, 1028, timber);
+room("Bed 3", "2.6 × 3.6 m", 1660, 681, 1903, 1028, timber);
+room("Bed 2", "3.4 × 2.8 m", 1231, 1036, 1548, 1356, timber);
+room("Bed 1", "3.7 × 2.8 m", 1556, 1036, 1903, 1356, timber);
+
+// ---------- Porch: plan x 757–1223, out to y 1413 ----------
+room("Porch", "5.0 m wide", 757, 1287, 1223, 1413, concrete);
+for (const px of [770, 1210]) box(0.1, CEIL, 0.1, X(px), FLOOR + CEIL / 2, Z(1405), frame);
+
+// ---------- Alfresco 7.3 × 4.4 m: plan x 649–1344, y 277–676 ----------
+room("Alfresco", "7.3 × 4.4 m", 649, 281, 1340, 672, deck);
+box(M(695), FLOOR - 0.03, M(395), X(996), (FLOOR - 0.03) / 2, Z(477), concrete);
+// Solid end walls where the plan draws them thick; the rest is open with posts.
+wall("v", 649, 273, 672, { t: EXT_T, h: 2.25, open: [[355, 620, "slider"]], glazed: false });
+wall("v", 1344, 459, 676, { t: EXT_T, h: 2.25 });
+for (const [px, py] of [[649, 281], [880, 281], [1100, 281], [1340, 281], [1340, 459]]) {
+  box(0.1, 2.25, 0.1, X(px), FLOOR + 1.125, Z(py), frame);
+}
+{
+  const x0 = X(630), x1 = X(1362), zh = Z(672) - 0.05, zo = Z(262);
+  const yh = FLOOR + CEIL + 0.02, yo = FLOOR + 2.25;
+  tris([[x0, yh, zh], [x1, yh, zh], [x1, yo, zo], [x0, yh, zh], [x1, yo, zo], [x0, yo, zo]], colorbond);
 }
 
-// Lot: 20 m east-west (x), 29 m south-north (z). Street is south.
-box(20, 0.08, 29, 10, 0, 14.5, grass);
-box(24, 0.06, 6, 10, -0.01, -3, road);
-box(20, 0.02, 1.6, 10, 0.05, 0.8, concrete); // footpath
-// Driveway into the double carport, west side.
-box(5.4, 0.03, 8.2, 4.9, 0.09, 4.1, concrete);
+// ---------- Double carport 5.7 × 5.7 m: plan x 273–781, y 1417–1926 ----------
+room("Double carport", "5.7 × 5.7 m", 273, 1417, 781, 1926, concrete);
+for (const [px, py] of [[285, 1430], [769, 1430], [285, 1914], [769, 1914]]) {
+  box(0.1, 2.35, 0.1, X(px), 1.17, Z(py), steel);
+}
+{
+  const x0 = X(255), x1 = X(799), xm = (x0 + x1) / 2, z0 = Z(1405), z1 = Z(1950);
+  const yb = 2.35, yr = 2.35 + 1.0;
+  tris([
+    [x0, yb, z0], [x0, yb, z1], [xm, yr, z1], [x0, yb, z0], [xm, yr, z1], [xm, yr, z0],
+    [x1, yb, z0], [xm, yr, z0], [xm, yr, z1], [x1, yb, z0], [xm, yr, z1], [x1, yb, z1],
+  ], colorbond);
+  tris([[x0, yb, z1], [x1, yb, z1], [xm, yr, z1]], mat(0xcfd2d5));
+}
 
-// Boundary fence. Street fence is lower and open at the driveway.
-function fenceRun(x1, z1, x2, z2, h, gap) {
-  const dx = x2 - x1, dz = z2 - z1;
-  const len = Math.hypot(dx, dz);
-  const ux = dx / len, uz = dz / len;
-  for (let d = 0; d <= len; d += 1.8) {
-    if (gap && d > gap[0] && d < gap[1]) continue;
-    box(0.06, h, 0.06, x1 + ux * d, h / 2, z1 + uz * d, fenceMat);
+// ---------- Shed 3.0 × 3.0 m: plan x 1683–1967, y 192–476 ----------
+{
+  const shedWall = { t: 0.06, h: 2.1, material: colorbond, outer: colorbond };
+  box(M(284), 0.1, M(284), X(1825), 0.05, Z(334), concrete);
+  wall("v", 1686, 192, 476, { ...shedWall, open: [[258, 410, "door"]] });
+  wall("v", 1964, 192, 476, shedWall);
+  wall("h", 195, 1683, 1967, shedWall);
+  wall("h", 473, 1683, 1967, shedWall);
+  label("Shed", "3.0 × 3.0 m", X(1825), Z(334));
+  const x0 = X(1670), x1 = X(1980), z0 = Z(180), z1 = Z(488), zm = (z0 + z1) / 2;
+  const yb = FLOOR + 2.1 - 0.15, yr = yb + 0.6;
+  tris([
+    [x0, yb, z0], [x1, yb, z0], [x1, yr, zm], [x0, yb, z0], [x1, yr, zm], [x0, yr, zm],
+    [x0, yb, z1], [x0, yr, zm], [x1, yr, zm], [x0, yb, z1], [x1, yr, zm], [x1, yb, z1],
+  ], colorbond);
+}
+
+// ---------- Main hip roof ----------
+{
+  const eave = 0.45, pitch = THREE.MathUtils.degToRad(22.5);
+  const x0 = X(446) - eave, x1 = X(1912) + eave, z0 = Z(672) - eave, z1 = Z(1366) + eave;
+  const yb = FLOOR + CEIL, half = (z1 - z0) / 2, rise = Math.tan(pitch) * half;
+  const zm = z0 + half, rx0 = x0 + half, rx1 = x1 - half, yr = yb + rise;
+  tris([
+    [x0, yb, z1], [x1, yb, z1], [rx1, yr, zm], [x0, yb, z1], [rx1, yr, zm], [rx0, yr, zm],
+    [x1, yb, z0], [x0, yb, z0], [rx0, yr, zm], [x1, yb, z0], [rx0, yr, zm], [rx1, yr, zm],
+    [x0, yb, z0], [x0, yb, z1], [rx0, yr, zm],
+    [x1, yb, z1], [x1, yb, z0], [rx1, yr, zm],
+  ], tile);
+  // Soffit, fascia and gutter line.
+  tris([[x0, yb, z0], [x1, yb, z0], [x1, yb, z1], [x0, yb, z0], [x1, yb, z1], [x0, yb, z1]], mat(0xeeeeea));
+  const fy = yb - 0.06;
+  box(x1 - x0, 0.18, 0.06, (x0 + x1) / 2, fy, z0, fascia, roofs);
+  box(x1 - x0, 0.18, 0.06, (x0 + x1) / 2, fy, z1, fascia, roofs);
+  box(0.06, 0.18, z1 - z0, x0, fy, zm, fascia, roofs);
+  box(0.06, 0.18, z1 - z0, x1, fy, zm, fascia, roofs);
+  // Solar array on the north slope, 2 rows × 6 panels.
+  for (let r = 0; r < 2; r++) {
+    for (let c = 0; c < 6; c++) {
+      const f = 0.25 + r * 0.33;
+      const p = box(1.0, 0.04, 1.65, X(1130) + c * 1.06, yb + f * rise + 0.08, z0 + f * half, solar, roofs);
+      p.rotation.x = -pitch;
+    }
   }
-  const rails = gap ? [[0, gap[0]], [gap[1], len]] : [[0, len]];
-  for (const [a, b] of rails) {
-    if (b - a < 0.2) continue;
-    const mid = (a + b) / 2;
-    box(Math.abs(dx) > Math.abs(dz) ? b - a : 0.04, 0.04, Math.abs(dz) >= Math.abs(dx) ? b - a : 0.04, x1 + ux * mid, h * 0.72, z1 + uz * mid, fenceMat);
-    box(Math.abs(dx) > Math.abs(dz) ? b - a : 0.04, 0.04, Math.abs(dz) >= Math.abs(dx) ? b - a : 0.04, x1 + ux * mid, h * 0.38, z1 + uz * mid, fenceMat);
+}
+
+// ---------- Site ----------
+const LOT_W = 20, LOT_D = 29;
+box(LOT_W, 0.06, LOT_D, LOT_W / 2, -0.03, LOT_D / 2, grass);
+box(LOT_W + 16, 0.04, 2.4, LOT_W / 2, -0.04, LOT_D + 1.2, mat(0x7d9450));
+box(LOT_W + 16, 0.04, 1.5, LOT_W / 2, -0.03, LOT_D + 1.4, concrete);
+box(LOT_W + 16, 0.04, 7, LOT_W / 2, -0.05, LOT_D + 5.9, road);
+// Driveway from the carport to the kerb.
+box(M(508), 0.04, LOT_D - Z(1926) + 2.4, X(527), 0.0, (Z(1926) + LOT_D + 2.4) / 2, concrete);
+
+// Grey Colorbond side and rear fences; low white pool-style fence across the front.
+box(0.05, 1.8, LOT_D, 0, 0.9, LOT_D / 2, fenceGrey);
+box(0.05, 1.8, LOT_D, LOT_W, 0.9, LOT_D / 2, fenceGrey);
+box(LOT_W, 1.8, 0.05, LOT_W / 2, 0.9, 0, fenceGrey);
+{
+  const gate0 = X(273) - 0.3, gate1 = X(781) + 0.3;
+  for (const [a, b] of [[0, gate0], [gate1, LOT_W]]) {
+    box(b - a, 0.04, 0.04, (a + b) / 2, 1.15, LOT_D, fenceWhite);
+    box(b - a, 0.04, 0.04, (a + b) / 2, 0.1, LOT_D, fenceWhite);
+    for (let x = a; x <= b + 0.001; x += 0.12) box(0.02, 1.1, 0.02, x, 0.6, LOT_D, fenceWhite);
   }
 }
-fenceRun(0, 0, 20, 0, 1.15, [2.2, 7.6]);
-fenceRun(0, 0, 0, 29, 1.7);
-fenceRun(20, 0, 20, 29, 1.7);
-fenceRun(0, 29, 20, 29, 1.7);
 
-// House external footprint. South wall of the enclosed house is z = 8.2.
-// x 2.2 .. 17.95 (15.75 m), enclosed depth 7.42 m going north.
-const HX = 2.2, HZ = 8.2, HW = 15.75, HD = 7.42;
-
-function wallX(x, z, len, h = WALL_H) { box(WALL_T, h, len, x, h / 2, z, brick); }
-function wallZ(x, z, len, h = WALL_H) { box(len, h, WALL_T, x, h / 2, z, brick); }
-
-// Exterior shell with door and window gaps.
-// West and east are solid.
-wallX(HX, HZ + HD / 2, HD);
-wallX(HX + HW, HZ + HD / 2, HD);
-// North wall, gap for kitchen opening onto the alfresco.
-wallZ(HX + 2.2, HZ + HD, 4.2);
-wallZ(HX + 12.4, HZ + HD, 6.5);
-// South wall in three pieces: bed 4, beside the front door, bedrooms.
-wallZ(HX + 1.55, HZ, 3.1);
-wallZ(HX + 6.55, HZ, 1.3);
-wallZ(HX + 13.15, HZ, 5.4);
-
-// Front door and a security-screen window beside it.
-box(0.9, 2.05, 0.06, HX + 4.55, 1.05, HZ, frame);
-box(0.7, 1.85, 0.04, HX + 4.55, 1.0, HZ + 0.02, glass);
-box(1.5, 1.35, 0.06, HX + 1.55, 1.35, HZ, frame);
-box(1.35, 1.2, 0.04, HX + 1.55, 1.35, HZ + 0.02, glass);
-box(1.6, 1.25, 0.06, HX + 10.3, 1.4, HZ, frame);
-box(1.45, 1.1, 0.04, HX + 10.3, 1.4, HZ + 0.02, glass);
-box(1.6, 1.25, 0.06, HX + 14.5, 1.4, HZ, frame);
-box(1.45, 1.1, 0.04, HX + 14.5, 1.4, HZ + 0.02, glass);
-// Kitchen window to alfresco.
-box(1.8, 1.15, 0.06, HX + 5.7, 1.45, HZ + HD, frame);
-box(1.65, 1.0, 0.04, HX + 5.7, 1.45, HZ + HD - 0.02, glass);
-
-// Interior walls. Coordinates are centres.
-// Bed 4 east wall, door near the lounge.
-wallX(HX + 3.28, HZ + 5.3, 4.0);
-wallX(HX + 3.28, HZ + 0.7, 1.2);
-// Lounge / kitchen split.
-wallZ(HX + 5.9, HZ + 3.85, 5.0);
-// East wing west wall (bed 2 / wet), door into the hall.
-wallX(HX + 8.5, HZ + 1.45, 2.5);
-wallX(HX + 8.5, HZ + 5.7, 3.2);
-// Bed 2 / bed 1 split.
-wallX(HX + 12.05, HZ + 1.5, 2.7);
-// Bed 3 south wall.
-wallZ(HX + 14.0, HZ + 3.75, 3.5);
-// Wet rooms, three narrow bays above bed 2.
-wallZ(HX + 10.25, HZ + 4.35, 3.3);
-wallX(HX + 9.6, HZ + 5.85, 2.6);
-wallX(HX + 10.9, HZ + 5.85, 2.6);
-
-// Floors. y just above the grass.
-function floor(x, z, w, d, mat, name) {
-  box(w, 0.05, d, x + w / 2, 0.12, z + d / 2, mat);
-  if (name) label(name, x + w / 2, z + d / 2);
-}
-const ix = HX + WALL_T;
-const iz = HZ + WALL_T;
-floor(ix, iz, 3.1, 7.2, timber, "Bed 4 / living");
-floor(ix + 3.22, iz, 5.0, 3.55, timber, "Lounge");
-floor(ix + 3.22, iz + 3.7, 5.0, 3.35, tileFloor, "Kitchen");
-floor(ix + 8.4, iz, 3.4, 2.8, timber, "Bed 2");
-floor(ix + 11.95, iz, 3.55, 2.8, timber, "Bed 1");
-floor(ix + 11.95, iz + 3.75, 3.55, 3.3, timber, "Bed 3");
-floor(ix + 8.4, iz + 4.35, 1.15, 2.7, tileFloor, "Laundry");
-floor(ix + 9.6, iz + 4.35, 1.15, 2.7, tileFloor, "WC");
-floor(ix + 10.8, iz + 4.35, 1.05, 2.7, tileFloor, "Bath");
-
-// Porch, south of the lounge. 5.0 × 1.7 from the 2021 plan.
-const porchX = HX + 3.34, porchZ = HZ - 1.7;
-floor(porchX, porchZ, 5.0, 1.58, concrete, "Porch");
-box(5.15, 0.1, 0.1, porchX + 2.5, 0.2, porchZ, concrete);
-// Porch posts and a low roof.
-box(0.1, 2.35, 0.1, porchX + 0.15, 1.2, porchZ + 0.1, frame);
-box(0.1, 2.35, 0.1, porchX + 4.85, 1.2, porchZ + 0.1, frame);
-box(5.3, 0.08, 1.9, porchX + 2.5, 2.4, porchZ + 0.85, metal, roofs);
-
-// Alfresco 7.3 × 4.4 on the north side.
-const alfX = HX + 2.05, alfZ = HZ + HD, alfW = 7.3, alfD = 4.4;
-floor(alfX, alfZ, alfW, alfD, deck, "Alfresco");
-for (const [px, pz] of [[0.15, alfD - 0.15], [alfW / 2, alfD - 0.15], [alfW - 0.15, alfD - 0.15], [alfW - 0.15, 0.15]]) {
-  box(0.1, 2.3, 0.1, alfX + px, 1.15, alfZ + pz, frame);
-}
-// Skillion falling to the north.
-{
-  const geo = new THREE.BufferGeometry();
-  const y0 = 2.45, y1 = 2.15;
-  const x0 = alfX - 0.15, x1 = alfX + alfW + 0.15, z0 = alfZ - 0.05, z1 = alfZ + alfD + 0.2;
-  geo.setAttribute("position", new THREE.Float32BufferAttribute([
-    x0, y0, z0,  x1, y0, z0,  x1, y1, z1,
-    x0, y0, z0,  x1, y1, z1,  x0, y1, z1,
-  ], 3));
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, metal);
-  m.castShadow = true;
-  roofs.add(m);
-}
-
-// Double carport 5.7 × 5.7, gable facing the street.
-const cpX = HX - 0.15, cpZ = HZ - 5.7, cpW = 5.7, cpD = 5.7;
-box(cpW, 0.04, cpD, cpX + cpW / 2, 0.1, cpZ + cpD / 2, concrete);
-for (const [px, pz] of [[0.15, 0.15], [cpW - 0.15, 0.15], [0.15, cpD - 0.15], [cpW - 0.15, cpD - 0.15]]) {
-  box(0.12, 2.25, 0.12, cpX + px, 1.15, cpZ + pz, metalDark);
-}
-{
-  const geo = new THREE.BufferGeometry();
-  const yb = 2.3, rise = 1.05;
-  const x0 = cpX - 0.2, x1 = cpX + cpW + 0.2, xm = (x0 + x1) / 2;
-  const z0 = cpZ - 0.15, z1 = cpZ + cpD + 0.1;
-  const v = [
-    x0, yb, z0, xm, yb + rise, z0, x1, yb, z0,
-    x0, yb, z1, xm, yb + rise, z1, x1, yb, z1,
-  ];
-  // west slope and east slope, plus gable ends
-  geo.setAttribute("position", new THREE.Float32BufferAttribute([
-    x0, yb, z0, x0, yb, z1, xm, yb + rise, z1,  x0, yb, z0, xm, yb + rise, z1, xm, yb + rise, z0,
-    x1, yb, z0, xm, yb + rise, z0, xm, yb + rise, z1,  x1, yb, z0, xm, yb + rise, z1, x1, yb, z1,
-    x0, yb, z0, xm, yb + rise, z0, x1, yb, z0,
-    x0, yb, z1, x1, yb, z1, xm, yb + rise, z1,
-  ], 3));
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, metal);
-  m.castShadow = true;
-  roofs.add(m);
-}
-label("Carport", cpX + cpW / 2, cpZ + cpD / 2);
-
-// Shed 3 × 3, detached, north-east of the alfresco.
-const shX = HX + 11.6, shZ = HZ + HD + 4.9, sh = 3;
-floor(shX, shZ, sh, sh, concrete, "Shed");
-wallX(shX, shZ + sh / 2, sh, 2.2);
-wallX(shX + sh, shZ + sh / 2, sh, 2.2);
-wallZ(shX + 0.7, shZ, 1.2, 2.2);
-wallZ(shX + sh - 0.55, shZ, 0.9, 2.2);
-wallZ(shX + sh / 2, shZ + sh, sh, 2.2);
-box(0.9, 1.9, 0.05, shX + 1.7, 1.0, shZ, trim);
-{
-  const geo = new THREE.BufferGeometry();
-  const yb = 2.2, rise = 0.7;
-  const x0 = shX - 0.12, x1 = shX + sh + 0.12, xm = (x0 + x1) / 2;
-  const z0 = shZ - 0.12, z1 = shZ + sh + 0.12;
-  geo.setAttribute("position", new THREE.Float32BufferAttribute([
-    x0, yb, z0, x0, yb, z1, xm, yb + rise, z1, x0, yb, z0, xm, yb + rise, z1, xm, yb + rise, z0,
-    x1, yb, z0, xm, yb + rise, z0, xm, yb + rise, z1, x1, yb, z0, xm, yb + rise, z1, x1, yb, z1,
-  ], 3));
-  geo.computeVertexNormals();
-  roofs.add(new THREE.Mesh(geo, metal));
-}
-
-// Hip roof over the enclosed house, grey tile, with a north-facing solar array.
-function hipRoof(x, z, w, d, base, rise) {
-  const geo = new THREE.BufferGeometry();
-  const x0 = x, x1 = x + w, z0 = z, z1 = z + d;
-  const inset = Math.min(w, d) / 2;
-  const rx0 = x0 + inset, rx1 = x1 - inset;
-  const zm = z + d / 2;
-  geo.setAttribute("position", new THREE.Float32BufferAttribute([
-    // south
-    x0, base, z0,  x1, base, z0,  rx1, base + rise, zm,  x0, base, z0,  rx1, base + rise, zm,  rx0, base + rise, zm,
-    // north
-    x1, base, z1,  x0, base, z1,  rx0, base + rise, zm,  x1, base, z1,  rx0, base + rise, zm,  rx1, base + rise, zm,
-    // west
-    x0, base, z1,  x0, base, z0,  rx0, base + rise, zm,
-    // east
-    x1, base, z0,  x1, base, z1,  rx1, base + rise, zm,
-  ], 3));
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, tile);
-  m.castShadow = true;
-  roofs.add(m);
-  // Solar panels on the north slope.
-  const panel = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.05, 1.5), solar);
-  panel.position.set(x + w * 0.48, base + rise * 0.62, z + d * 0.72);
-  panel.rotation.x = -0.42;
-  roofs.add(panel);
-  const panel2 = panel.clone();
-  panel2.position.x += 3.5;
-  roofs.add(panel2);
-}
-hipRoof(HX - 0.35, HZ - 0.35, HW + 0.7, HD + 0.55, WALL_H - 0.05, 1.45);
-// Fascia band so the eave reads against the brick.
-box(HW + 0.7, 0.16, 0.12, HX + HW / 2, WALL_H - 0.02, HZ - 0.28, trim, roofs);
-box(HW + 0.7, 0.16, 0.12, HX + HW / 2, WALL_H - 0.02, HZ + HD + 0.22, trim, roofs);
-
-// A couple of trees from the front and rear photos. Not to a survey.
-function tree(x, z, h, r) {
-  box(0.28, h * 0.45, 0.28, x, h * 0.22, z, new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 1 }));
-  mesh(new THREE.SphereGeometry(r, 16, 12), new THREE.MeshStandardMaterial({ color: 0x3f6b32, roughness: 1 }), x, h * 0.62, z);
-}
-tree(16.8, 5.2, 7.5, 2.4);
-tree(8.5, 24.5, 6.5, 2.1);
-tree(1.3, 18, 5, 1.5);
-
+// ---------- UI ----------
 const views = {
-  front: { pos: [10, 12, -16], target: [10, 1.2, 14] },
-  rear: { pos: [10, 12, 42], target: [10, 1.2, 16] },
-  top: { pos: [10, 36, 14.6], target: [10, 0, 14.5] },
+  front: { pos: [8, 11, 44], target: [10, 1, 13] },
+  rear: { pos: [12, 12, -14], target: [10, 1, 10] },
+  top: { pos: [10, 38, 14.01], target: [10, 0, 14] },
 };
 function setView(name) {
-  const v = views[name];
-  camera.position.set(...v.pos);
-  controls.target.set(...v.target);
+  const target = new THREE.Vector3(...views[name].target);
+  const offset = new THREE.Vector3(...views[name].pos).sub(target);
+  offset.multiplyScalar(Math.max(1, 1.5 / camera.aspect));
+  camera.position.copy(target).add(offset);
+  controls.target.copy(target);
   controls.update();
-  for (const id of ["cam-front", "cam-rear", "cam-top"]) {
-    document.getElementById(id).classList.toggle("active", id === "cam-" + name);
-  }
+  for (const k of Object.keys(views)) document.getElementById("cam-" + k).classList.toggle("active", k === name);
 }
-document.getElementById("cam-front").onclick = () => setView("front");
-document.getElementById("cam-rear").onclick = () => setView("rear");
-document.getElementById("cam-top").onclick = () => setView("top");
+for (const k of Object.keys(views)) document.getElementById("cam-" + k).onclick = () => setView(k);
 
-const roofBtn = document.getElementById("toggle-roof");
-roofBtn.onclick = () => {
-  roofs.visible = !roofs.visible;
-  roofBtn.textContent = roofs.visible ? "Roof on" : "Roof off";
-  roofBtn.classList.toggle("active", roofs.visible);
-};
-const labelBtn = document.getElementById("toggle-labels");
-labelBtn.onclick = () => {
-  labels.visible = !labels.visible;
-  labelBtn.textContent = labels.visible ? "Labels on" : "Labels off";
-  labelBtn.classList.toggle("active", labels.visible);
-};
+function toggle(id, group, on, off) {
+  const btn = document.getElementById(id);
+  btn.onclick = () => {
+    group.visible = !group.visible;
+    btn.textContent = group.visible ? on : off;
+    btn.classList.toggle("active", group.visible);
+  };
+}
+toggle("toggle-roof", roofs, "Roof on", "Roof off");
+toggle("toggle-labels", labels, "Labels on", "Labels off");
 
 setView("front");
 addEventListener("resize", () => {
