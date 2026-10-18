@@ -140,14 +140,6 @@ const grilleTex = tex(128, 182, (g, w, h) => {
     g.beginPath(); g.moveTo(i * w / 2, h); g.lineTo(i * w / 2 + w, 0); g.stroke();
   }
 }, 0.24, 0.34);
-const solarTex = tex(200, 330, (g, w, h) => {
-  g.fillStyle = "#1a2a44"; g.fillRect(0, 0, w, h);
-  g.strokeStyle = "#5b6f8f"; g.lineWidth = 2;
-  for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo(i * w / 6, 0); g.lineTo(i * w / 6, h); g.stroke(); }
-  for (let i = 1; i < 10; i++) { g.beginPath(); g.moveTo(0, i * h / 10); g.lineTo(w, i * h / 10); g.stroke(); }
-  g.strokeStyle = "#c8ccd2"; g.lineWidth = 10; g.strokeRect(0, 0, w, h);
-}, 1, 1);
-
 // ---------- Materials ----------
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, side: THREE.DoubleSide, ...o });
 const brick = mat(0xffffff, { map: brickTex, roughness: 0.95 });
@@ -174,7 +166,6 @@ const grille = mat(0xffffff, { map: grilleTex, transparent: true, alphaTest: 0.4
 const sill = mat(0xcdb68c, { roughness: 0.95 });
 const charcoal = mat(0x3d4044, { roughness: 0.6, metalness: 0.2 });
 const soffit = mat(0xf0eee6, { side: THREE.BackSide });
-const solar = mat(0xffffff, { map: solarTex, roughness: 0.3, metalness: 0.4 });
 const aluminium = mat(0xc9cdd2, { roughness: 0.35, metalness: 0.6 });
 const fenceGrey = mat(0x7a7f84, { map: ribTex, roughness: 0.55, metalness: 0.25 });
 const fenceWhite = mat(0xf7f7f4, { roughness: 0.5 });
@@ -364,7 +355,7 @@ wall("h", 1361, 1223, 1913, { t: EXT_T, out: 1, open: [[1292, 1404, "window"], [
 wall("v", 752, 672, 1366, { open: [[865, 926, "door"]] });            // Bed 4 | kitchen & lounge
 wall("h", 907, 446, 529);                                              // Bed 4 robe, south
 wall("v", 668, 672, 737);                                              // Bed 4 robe, east return
-wall("v", 1227, 672, 1366, { open: [[814, 886, "door"]] });           // kitchen & lounge | laundry & bed 2
+wall("v", 1227, 672, 1366, { open: [[814, 886, "door"], [952, 1022, "door"]] }); // kitchen & lounge | laundry, hall & bed 2
 wall("v", 1014, 870, 949);                                             // fridge recess
 wall("v", 1100, 870, 949);                                             // pantry
 wall("h", 870, 1100, 1227);                                            // pantry top
@@ -382,7 +373,7 @@ box(M(227), 2.2, M(60), X(1790), FLOOR + 1.1, Z(1068), joinery);
 box(M(210), 2.2, M(220), X(560), FLOOR + 1.1, Z(793), joinery);
 box(M(370), 0.9, 0.6, X(1010), FLOOR + 0.45, Z(681) + 0.3, joinery);
 box(M(370), 0.04, 0.62, X(1010), FLOOR + 0.92, Z(681) + 0.31, mat(0x2b2b2b, { roughness: 0.3 }));
-box(0.6, 0.9, M(150), X(1223) - 0.3, FLOOR + 0.45, Z(756), joinery);
+box(0.6, 0.9, M(126), X(1223) - 0.3, FLOOR + 0.45, Z(744), joinery);
 
 // ---------- Floors and labels ----------
 function label(name, dims, x, z, y = FLOOR + 2.2) {
@@ -462,7 +453,7 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
     for (const z of [pz0, (pz0 + pz1) / 2, pz1]) box(0.09, eave, 0.09, x, eave / 2, z, steelCream);
     box(0.08, 0.2, pz1 - pz0 + 0.1, x, eave - 0.1, (pz0 + pz1) / 2, steelCream);
   }
-  const x0 = px0 - 0.25, x1 = px1 + 0.25, xm = (x0 + x1) / 2, z0 = Z(1405), z1 = Z(1950);
+  const x0 = px0 - 0.25, x1 = px1 + 0.25, xm = (x0 + x1) / 2, z0 = Z(1366) + 0.62, z1 = Z(1950);
   const yb = eave + 0.02, yr = yb + rise;
   const slope = (x) => Math.abs(x - xm) / Math.cos(Math.atan(rise / (xm - x0)));
   sheet([
@@ -541,22 +532,10 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
   downpipe(X(1912) + 0.15, Z(672) + 0.25, X(1912) + 0.4, z0 - 0.05);
   downpipe(X(446) - 0.15, Z(672) + 0.25, X(446) - 0.4, z0 - 0.05);
 
-  // Solar on the north slope, as in the satellite view: 7 × 2 older panels and 2 × 2 newer, wider panels.
-  const onNorth = (x, s, w, l) => {
-    const d = s * Math.cos(pitch);
-    const p = box(w, 0.04, l, x, yb + d * Math.tan(pitch) + 0.09, z0 + d, solar, roofs, false);
-    p.rotation.x = -pitch;
-    return p;
-  };
-  const startX = x0 + 2.4;
-  for (let r = 0; r < 2; r++) {
-    for (let c = 0; c < 7; c++) onNorth(startX + 0.5 + c * 1.03, 1.55 + r * 1.32, 1.0, 1.28);
-    for (let c = 0; c < 2; c++) onNorth(startX + 7.25 + 0.82 + c * 1.66, 1.55 + r * 1.32, 1.62, 1.28);
-  }
   // Vent pipe and whirlybird.
   {
     const d = 2.4, y = yb + d * Math.tan(pitch);
-    rod([startX + 11.1, y - 0.05, z0 + d], [startX + 11.1, y + 0.45, z0 + d], 0.05, aluminium);
+    rod([x0 + 13.5, y - 0.05, z0 + d], [x0 + 13.5, y + 0.45, z0 + d], 0.05, aluminium);
   }
   {
     const s = slopeLen - 0.9, d = s * Math.cos(pitch);
