@@ -65,7 +65,7 @@
     <details open>
       <summary><h2>Rooms</h2></summary>
       <table id="room-table"></table>
-      <div class="note">Internal sizes measured off the 2025 floor plan (wall to wall).</div>
+      <div class="note" id="room-note"></div>
     </details>
   </div>
   <script type="importmap">
@@ -228,12 +228,14 @@ const roofs = new THREE.Group();
 const labels = new THREE.Group();
 scene.add(world, roofs, labels);
 
-// Renovation ("After") layers. Each sits inside its "Before" counterpart, so the Roof and Labels toggles still apply.
-const after = new THREE.Group();
-const afterRoofs = new THREE.Group();
-const afterLabels = new THREE.Group();
-world.add(after); roofs.add(afterRoofs); labels.add(afterLabels);
-const demolish = [];  // existing objects hidden in After
+// Existing house ("Before") and renovation ("After") layers. Each sits inside the shared group, so the Roof and
+// Labels toggles still apply. Helpers add to whichever layer is current.
+const phaseLayer = () => ({ world: new THREE.Group(), roofs: new THREE.Group(), labels: new THREE.Group() });
+const shared = { world, roofs, labels };
+const before = phaseLayer(), after = phaseLayer();
+for (const p of [before, after]) { world.add(p.world); roofs.add(p.roofs); labels.add(p.labels); }
+const layer = { ...before };
+const useLayer = (l) => Object.assign(layer, l);
 const renoItems = []; // { item, qty, unit, rate } in AUD incl. GST
 
 // Box UVs in world metres so tiled textures keep a constant scale.
@@ -254,7 +256,7 @@ function worldUV(geo, w, h, d, x, y, z) {
     }
   }
 }
-function box(w, h, d, x, y, z, material, parent = world, worldUv = true) {
+function box(w, h, d, x, y, z, material, parent = layer.world, worldUv = true) {
   const g = new THREE.BoxGeometry(w, h, d);
   if (worldUv) worldUV(g, w, h, d, x, y, z);
   const m = new THREE.Mesh(g, material);
@@ -264,7 +266,7 @@ function box(w, h, d, x, y, z, material, parent = world, worldUv = true) {
   return m;
 }
 // Triangles are wound to face up; uvFn maps a vertex to texture metres.
-function surface(points, material, uvFn, parent = roofs) {
+function surface(points, material, uvFn, parent = layer.roofs) {
   const pos = [], uv = [];
   const v = (p) => new THREE.Vector3(...p);
   for (let i = 0; i < points.length; i += 3) {
@@ -285,7 +287,7 @@ function surface(points, material, uvFn, parent = roofs) {
   parent.add(m);
   return m;
 }
-function sheet(points, top, uvFn, parent = roofs) {
+function sheet(points, top, uvFn, parent = layer.roofs) {
   const m = surface(points, top, uvFn, parent);
   const under = new THREE.Mesh(m.geometry, backer);
   under.receiveShadow = true;
@@ -293,7 +295,7 @@ function sheet(points, top, uvFn, parent = roofs) {
   return m;
 }
 const quad = (a, b, c, d) => [a, b, c, a, c, d];
-function rod(a, b, r, material, parent = roofs, segments = 10) {
+function rod(a, b, r, material, parent = layer.roofs, segments = 10) {
   const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), segments), material);
   m.position.copy(A).add(B).multiplyScalar(0.5);
@@ -310,7 +312,9 @@ function rod(a, b, r, material, parent = roofs, segments = 10) {
 const OPENING = {
   door: { sill: 0, head: 2.04 },
   front: { sill: 0, head: 2.04 },
+  entry: { sill: 0, head: 2.1 },
   back: { sill: 0, head: 2.04 },
+  open: { sill: 0, head: 2.1 },
   slider: { sill: 0, head: 2.1, panes: 2 },
   window: { sill: 0.9, head: 2.1, panes: 2 },
   kitchen: { sill: 1.05, head: 2.1, panes: 2 },
@@ -323,7 +327,7 @@ function wall(axis, k, a, b, { t = INT_T, h = CEIL, open = [], out = 0, material
     ? [outer, outer, outer, outer, out > 0 ? outer : plaster, out < 0 ? outer : plaster]
     : [out > 0 ? outer : plaster, out < 0 ? outer : plaster, outer, outer, outer, outer];
   const wallMat = isBrick ? faces(brick) : material;
-  const put = (len, hh, d, mid, y, off, m, parent = world) => {
+  const put = (len, hh, d, mid, y, off, m, parent = layer.world) => {
     const [cx, cz] = axis === "h" ? [X(mid), Z(k) + off] : [X(k) + off, Z(mid)];
     return axis === "h" ? box(M(len), hh, d, cx, y, cz, m, parent) : box(d, hh, M(len), cx, y, cz, m, parent);
   };
@@ -344,6 +348,10 @@ function wall(axis, k, a, b, { t = INT_T, h = CEIL, open = [], out = 0, material
       put(len, 2.04, 0.03, mid, FLOOR + 1.02, face + out * 0.03, frame);
       const g = put(len - 10, 1.9, 0.01, mid, FLOOR + 1.02, face + out * 0.05, grille);
       g.castShadow = false;
+    } else if (kind === "entry") {
+      put(len - 4, 2.06, 0.05, mid, FLOOR + 1.03, 0, doorTimber);
+      put(4, 2.1, 0.08, s + 2, FLOOR + 1.05, 0, charcoal);
+      put(4, 2.1, 0.08, e - 2, FLOOR + 1.05, 0, charcoal);
     } else if (kind === "back") {
       put(len - 6, 2.0, 0.045, mid, FLOOR + 1.0, 0, joinery);
     } else if (o.panes) {
@@ -422,7 +430,7 @@ function label(name, dims, x, z, y = FLOOR + 2.2) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
   sp.position.set(x, y, z);
   sp.scale.set(1.9, 1.9 * c.height / 512, 1);
-  labels.add(sp);
+  layer.labels.add(sp);
 }
 function room(name, dims, x0, y0, x1, y1, material, labelY) {
   box(M(x1 - x0), 0.04, M(y1 - y0), X((x0 + x1) / 2), FLOOR + 0.02, Z((y0 + y1) / 2), material);
@@ -467,13 +475,13 @@ wall("v", 1243, 545, 672, { ...sunWall });
 {
   const yHi = EAVE_Y - 0.05, yLo = FLOOR + SUN_H;
   for (const px of [649, 1344]) {
-    surface([[X(px), yLo, Z(277)], [X(px), yLo, Z(672)], [X(px), yHi, Z(672)]], weatherboard, (x, y, z) => [z, y], world);
+    surface([[X(px), yLo, Z(277)], [X(px), yLo, Z(672)], [X(px), yHi, Z(672)]], weatherboard, (x, y, z) => [z, y], layer.world);
   }
   const x0 = X(630), x1 = X(1366), zh = Z(672) - 0.12, zo = Z(262);
   sheet(quad([x0, yHi, zh], [x1, yHi, zh], [x1, yLo, zo], [x0, yLo, zo]), sunroomRoof, (x, y, z) => [x, z]);
-  box(x1 - x0, 0.14, 0.05, (x0 + x1) / 2, yLo - 0.04, zo, charcoal, roofs);
-  box(x1 - x0, 0.1, 0.12, (x0 + x1) / 2, yLo - 0.02, zo - 0.08, charcoal, roofs);
-  box(0.08, yLo - 0.1, 0.06, x1 - 0.1, (yLo - 0.1) / 2, zo - 0.1, charcoal, roofs);
+  box(x1 - x0, 0.14, 0.05, (x0 + x1) / 2, yLo - 0.04, zo, charcoal, layer.roofs);
+  box(x1 - x0, 0.1, 0.12, (x0 + x1) / 2, yLo - 0.02, zo - 0.08, charcoal, layer.roofs);
+  box(0.08, yLo - 0.1, 0.06, x1 - 0.1, (yLo - 0.1) / 2, zo - 0.1, charcoal, layer.roofs);
 }
 
 // ---------- Double carport 5.7 × 5.7 m: plan x 273–781, y 1417–1926 ----------
@@ -503,36 +511,41 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
     rod([px1, eave, z], [xm, yr - 0.05, z], 0.03, steelCream);
   }
   rod([xm, yr - 0.04, z0], [xm, yr - 0.04, z1], 0.04, steelCream);
-  box(0.1, 0.12, z1 - z0, x0, yb - 0.05, (z0 + z1) / 2, charcoal, roofs);
-  box(0.1, 0.12, z1 - z0, x1, yb - 0.05, (z0 + z1) / 2, charcoal, roofs);
+  box(0.1, 0.12, z1 - z0, x0, yb - 0.05, (z0 + z1) / 2, charcoal, layer.roofs);
+  box(0.1, 0.12, z1 - z0, x1, yb - 0.05, (z0 + z1) / 2, charcoal, layer.roofs);
 }
 
 // ---------- Shed 3.0 × 3.0 m: plan x 1683–1967, y 192–476, double doors on the west ----------
-{
+// dx, dy shift the shed in plan pixels.
+function shed(dx = 0, dy = 0) {
   const shedWall = { t: 0.05, h: 2.0, material: shedSheet, grilles: false };
-  box(M(284), 0.1, M(284), X(1825), 0.05, Z(334), concrete);
-  wall("v", 1686, 192, 476, { ...shedWall, open: [[250, 418, "door"]] });
-  wall("v", 1964, 192, 476, shedWall);
-  wall("h", 195, 1683, 1967, shedWall);
-  wall("h", 473, 1683, 1967, shedWall);
-  box(0.04, 1.9, M(84), X(1686) - 0.02, FLOOR + 0.95, Z(292), shedSheet);
-  box(0.04, 1.9, M(84), X(1686) - 0.02, FLOOR + 0.95, Z(376), shedSheet);
-  label("Shed", "3.0 × 3.0 m", X(1825), Z(334), FLOOR + 1.6);
-  const x0 = X(1672), x1 = X(1978), z0 = Z(180), z1 = Z(488), zm = (z0 + z1) / 2;
+  const sx = (p) => p + dx, sy = (p) => p + dy;
+  box(M(284), 0.1, M(284), X(sx(1825)), 0.05, Z(sy(334)), concrete);
+  wall("v", sx(1686), sy(192), sy(476), { ...shedWall, open: [[sy(250), sy(418), "door"]] });
+  wall("v", sx(1964), sy(192), sy(476), shedWall);
+  wall("h", sy(195), sx(1683), sx(1967), shedWall);
+  wall("h", sy(473), sx(1683), sx(1967), shedWall);
+  box(0.04, 1.9, M(84), X(sx(1686)) - 0.02, FLOOR + 0.95, Z(sy(292)), shedSheet);
+  box(0.04, 1.9, M(84), X(sx(1686)) - 0.02, FLOOR + 0.95, Z(sy(376)), shedSheet);
+  label("Shed", "3.0 × 3.0 m", X(sx(1825)), Z(sy(334)), FLOOR + 1.6);
+  const x0 = X(sx(1672)), x1 = X(sx(1978)), z0 = Z(sy(180)), z1 = Z(sy(488)), zm = (z0 + z1) / 2;
   const yb = FLOOR + 2.0, yr = yb + 0.5;
   sheet([
     ...quad([x0, yb, z0], [x1, yb, z0], [x1, yr, zm], [x0, yr, zm]),
     ...quad([x0, yb, z1], [x0, yr, zm], [x1, yr, zm], [x1, yb, z1]),
   ], shedSheet, (x, y, z) => [x, Math.abs(z - zm)]);
-  for (const x of [X(1686), X(1964)]) {
-    surface([[x, yb, Z(195)], [x, yb, Z(473)], [x, yr, zm]], shedSheet, (px, py, pz) => [pz, py], world);
+  for (const x of [X(sx(1686)), X(sx(1964))]) {
+    surface([[x, yb, Z(sy(195))], [x, yb, Z(sy(473))], [x, yr, zm]], shedSheet, (px, py, pz) => [pz, py], layer.world);
   }
 }
+shed();
 
 // ---------- Main hip roof: charcoal concrete tiles, 22.5° ----------
-{
-  const eave = 0.45, pitch = THREE.MathUtils.degToRad(22.5);
-  const x0 = X(446) - eave, x1 = X(1912) + eave, z0 = Z(672) - eave, z1 = Z(1366) + eave;
+// wx0..wx1, wz0..wz1 are the outer faces of the walls in metres. Returns the roof height at (x, z).
+const PITCH = THREE.MathUtils.degToRad(22.5);
+function hipRoof(wx0, wx1, wz0, wz1) {
+  const eave = 0.45, pitch = PITCH;
+  const x0 = wx0 - eave, x1 = wx1 + eave, z0 = wz0 - eave, z1 = wz1 + eave;
   const yb = EAVE_Y, half = (z1 - z0) / 2, rise = Math.tan(pitch) * half, slopeLen = half / Math.cos(pitch);
   const zm = z0 + half, rx0 = x0 + half, rx1 = x1 - half, yr = yb + rise;
   const up = (d) => d / Math.cos(pitch);
@@ -551,20 +564,21 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
   surface(quad([x0, yb, z0], [x1, yb, z0], [x1, yb, z1], [x0, yb, z1]), soffit);
   const gy = yb - 0.06;
   for (const z of [z0, z1]) {
-    box(x1 - x0 + 0.24, 0.13, 0.12, (x0 + x1) / 2, gy, z + (z === z0 ? -0.06 : 0.06), charcoal, roofs);
+    box(x1 - x0 + 0.24, 0.13, 0.12, (x0 + x1) / 2, gy, z + (z === z0 ? -0.06 : 0.06), charcoal, layer.roofs);
   }
   for (const x of [x0, x1]) {
-    box(0.12, 0.13, z1 - z0, x + (x === x0 ? -0.06 : 0.06), gy, zm, charcoal, roofs);
+    box(0.12, 0.13, z1 - z0, x + (x === x0 ? -0.06 : 0.06), gy, zm, charcoal, layer.roofs);
   }
   const downpipe = (wx, wz, gx, gz) => {
-    box(0.1, yb - 0.4, 0.05, wx, (yb - 0.4) / 2, wz, charcoal, world);
-    rod([wx, yb - 0.4, wz], [gx, gy, gz], 0.04, charcoal, roofs, 6);
+    box(0.1, yb - 0.4, 0.05, wx, (yb - 0.4) / 2, wz, charcoal, layer.world);
+    rod([wx, yb - 0.4, wz], [gx, gy, gz], 0.04, charcoal, layer.roofs, 6);
   };
-  downpipe(X(446) - 0.15, Z(1366) - 0.25, X(446) - 0.4, z1 + 0.05);
-  downpipe(X(1912) + 0.15, Z(1366) - 0.25, X(1912) + 0.4, z1 + 0.05);
-  downpipe(X(1912) + 0.15, Z(672) + 0.25, X(1912) + 0.4, z0 - 0.05);
-  downpipe(X(446) - 0.15, Z(672) + 0.25, X(446) - 0.4, z0 - 0.05);
+  downpipe(wx0 - 0.15, wz1 - 0.25, wx0 - 0.4, z1 + 0.05);
+  downpipe(wx1 + 0.15, wz1 - 0.25, wx1 + 0.4, z1 + 0.05);
+  downpipe(wx1 + 0.15, wz0 + 0.25, wx1 + 0.4, z0 - 0.05);
+  downpipe(wx0 - 0.15, wz0 + 0.25, wx0 - 0.4, z0 - 0.05);
 
+  const heightAt = (x, z) => yb + Math.min(z - z0, z1 - z, x - x0, x1 - x) * Math.tan(pitch);
   // Vent pipe and whirlybird.
   {
     const d = 2.4, y = yb + d * Math.tan(pitch);
@@ -573,20 +587,22 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
   {
     const s = slopeLen - 0.9, d = s * Math.cos(pitch);
     const wx = x0 + 3.0, wy = yb + d * Math.tan(pitch), wz = z1 - d;
-    rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, roofs, 16);
+    rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, layer.roofs, 16);
     const dome = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), aluminium);
     dome.position.set(wx, wy + 0.28, wz);
-    roofs.add(dome);
+    layer.roofs.add(dome);
   }
+  return heightAt;
 }
+hipRoof(X(446), X(1912), Z(672), Z(1366));
 
-// ---------- Site ----------
+// ---------- Site (shared by Before and After) ----------
+useLayer(shared);
 box(LOT_W, 0.06, LOT_D, LOT_W / 2, -0.03, LOT_D / 2, grass);
 box(LOT_W + 20, 0.05, 4.2, LOT_W / 2, -0.035, LOT_D + 2.1, verge);
 box(LOT_W + 20, 0.05, 1.3, LOT_W / 2, -0.02, LOT_D + 1.4, concrete);
 box(LOT_W + 20, 0.18, 0.15, LOT_W / 2, 0.0, LOT_D + 4.2, concrete);
 box(LOT_W + 20, 0.05, 8, LOT_W / 2, -0.06, LOT_D + 8.3, road);
-box(X(781) - X(273), 0.05, LOT_D + 4.2 - Z(1926), (X(273) + X(781)) / 2, 0.0, (Z(1926) + LOT_D + 4.2) / 2, concrete);
 
 // Grey Colorbond side and rear fences behind the building line.
 const colorbondFence = (x0, z0, x1, z1) => {
@@ -599,7 +615,9 @@ colorbondFence(0, 0, LOT_W, 0);
 colorbondFence(0, 0, 0, Z(1405));
 colorbondFence(LOT_W, 0, LOT_W, HOUSE_SOUTH);
 
-// White welded-mesh front fence: along the street, down the east boundary, and along the driveway to the porch.
+// Existing driveway and white welded-mesh front fence: along the street, down the east boundary, and along the driveway to the porch.
+useLayer(before);
+box(X(781) - X(273), 0.05, LOT_D + 4.2 - Z(1926), (X(273) + X(781)) / 2, 0.0, (Z(1926) + LOT_D + 4.2) / 2, concrete);
 const wireMatrices = [];
 function meshFence(x0, z0, x1, z1, { h = 1.2, gate = null } = {}) {
   const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
@@ -637,15 +655,195 @@ meshFence(drivewayEdge, Z(1413), drivewayEdge, LOT_D, { gate: [1.2, 2.1] });
   const wires = new THREE.InstancedMesh(new THREE.BoxGeometry(0.008, 1.12, 0.008), fenceWhite, wireMatrices.length);
   wireMatrices.forEach((m, i) => wires.setMatrixAt(i, m));
   wires.castShadow = true;
-  world.add(wires);
+  layer.world.add(wires);
 }
 // Letterbox on the fence corner at the driveway.
 box(0.07, 1.0, 0.07, drivewayEdge, 0.5, LOT_D - 0.3, fenceWhite);
 box(0.32, 0.36, 0.42, drivewayEdge, 1.15, LOT_D - 0.3, charcoal);
 
-// ---------- Renovation (After) ----------
-// Add new work to `after` / `afterRoofs` / `afterLabels`, push replaced objects into `demolish`,
-// and list each costed line in `renoItems`.
+// ---------- Renovation (After): proposed design, as drawn in renovation/plan.html ----------
+// Lot metres: main block x 1.54–18.44, z 14.18–21.60; rear suite x 1.54–7.54, z 9.78–14.18.
+const proposedRooms = [
+  ["Master", 3.89, 10.03, 7.29, 14.18, "bed"],
+  ["Ensuite", 1.79, 10.03, 3.79, 12.33, "wet"],
+  ["WIR", 1.79, 12.43, 3.79, 14.18, "bed"],
+  ["Bed 4", 1.79, 14.43, 5.27, 17.83, "bed"],
+  ["Bed 5", 1.79, 17.93, 5.27, 21.35, "bed"],
+  ["Kitchen · Living", 5.37, 14.43, 10.34, 21.35, "live"],
+  ["Bath", 10.44, 14.43, 13.14, 17.18, "wet"],
+  ["WC", 13.24, 14.43, 14.39, 17.18, "wet"],
+  ["Linen", 14.49, 14.43, 15.69, 17.18, "wet"],
+  ["Laundry", 15.79, 14.43, 18.19, 17.18, "wet"],
+  ["Hall", 10.44, 17.28, 18.19, 18.28, "bed"],
+  ["Bed 2", 10.44, 18.38, 14.29, 21.35, "bed"],
+  ["Bed 3", 14.39, 18.38, 18.19, 21.35, "bed"],
+];
+useLayer(after);
+{
+  const W0 = 1.54, W1 = 18.44, N0 = 14.18, S0 = 21.6, SN = 9.78, SE = 7.54, c = EXT_T / 2;
+  const PX = (x) => x * S + LOT_X0, PY = (z) => z * S + LOT_Y0;
+  const wallM = (axis, k, a, b, o = {}) => {
+    const [K, A] = axis === "h" ? [PY, PX] : [PX, PY];
+    wall(axis, K(k), A(a), A(b), { grilles: false, ...o, open: (o.open || []).map(([s, e, kind]) => [A(s), A(e), kind]) });
+  };
+  const ext = { t: EXT_T };
+  const roofSheet = mat(0x45494d, { map: ribTex, roughness: 0.5, metalness: 0.25, side: THREE.FrontSide });
+  const deckBoards = mat(0xa8744a, { map: boardTex, roughness: 0.8 });
+  const render = mat(0xe9e4da, { roughness: 0.95 });
+  const slat = mat(0x8a5a36, { roughness: 0.6 });
+  const stone = mat(0xe8e6e0, { roughness: 0.3 });
+
+  // Slabs.
+  box(W1 - W0, FLOOR, S0 - N0, (W0 + W1) / 2, FLOOR / 2, (N0 + S0) / 2, concrete);
+  box(SE - W0, FLOOR, N0 - SN, (W0 + SE) / 2, FLOOR / 2, (SN + N0) / 2, concrete);
+
+  // External walls: brick veneer to match, larger windows, no security grilles.
+  wallM("h", N0 + c, W0, W1, { ...ext, out: -1, open: [[6.4, 7.2, "door"], [7.6, 10.3, "slider"], [11.0, 12.6, "high"], [13.5, 14.1, "high"], [16.2, 17.8, "window"]] });
+  wallM("h", S0 - c, W0, W1, { ...ext, out: 1, open: [[2.8, 4.6, "window"], [5.9, 9.0, "tall"], [9.3, 10.2, "entry"], [11.4, 13.4, "window"], [15.3, 17.3, "window"]] });
+  wallM("v", W0 + c, N0, S0, { ...ext, out: -1, open: [[15.2, 17.0, "window"], [18.6, 20.4, "window"]] });
+  wallM("v", W1 - c, N0, S0, { ...ext, out: 1, open: [[15.0, 16.4, "window"], [17.33, 18.23, "back"], [19.0, 20.8, "window"]] });
+  wallM("h", SN + c, W0, SE, { ...ext, out: -1, open: [[4.0, 6.4, "tall"]] });
+  wallM("v", W0 + c, SN, N0, { ...ext, out: -1, open: [[10.5, 11.7, "high"]] });
+  wallM("v", SE - c, SN, N0, { ...ext, out: 1, open: [[11.2, 12.6, "slider"]] });
+
+  // Internal walls. The two walls either side of the living area stay where they are.
+  wallM("v", 5.32, N0, S0, { open: [[16.8, 17.6, "door"], [18.2, 19.0, "door"]] });
+  wallM("h", 17.88, W0, 5.32);
+  wallM("v", 10.40, N0, S0, { open: [[17.28, 18.28, "open"]] });
+  wallM("h", 17.23, 10.40, W1, { open: [[11.5, 12.3, "door"], [13.4, 14.2, "door"], [14.6, 15.6, "door"], [16.6, 17.4, "door"]] });
+  wallM("h", 18.33, 10.40, W1, { open: [[11.0, 11.8, "door"], [14.8, 15.6, "door"]] });
+  wallM("v", 13.19, N0, 17.23);
+  wallM("v", 14.44, N0, 17.23);
+  wallM("v", 15.74, N0, 17.23);
+  wallM("v", 14.34, 18.33, S0);
+  wallM("v", 3.84, SN, N0, { open: [[13.0, 13.8, "open"]] });
+  wallM("h", 12.38, W0, 3.84, { open: [[2.4, 3.2, "door"]] });
+
+  // Floors and labels.
+  const floorMat = { bed: timber, live: timber, wet: wetTile };
+  for (const [name, x0, z0, x1, z1, kind] of proposedRooms) {
+    const small = name === "WIR" || name === "Linen" || name === "Hall";
+    const dims = name === "WC" ? null : `${(x1 - x0).toFixed(1)} × ${(z1 - z0).toFixed(1)} m`;
+    room(small ? null : name, dims, PX(x0), PY(z0), PX(x1), PY(z1), floorMat[kind]);
+  }
+
+  // Kitchen run with tall fridge/pantry unit, island, robes, laundry bench, bath.
+  box(0.6, 2.2, 0.9, 10.04, FLOOR + 1.1, 14.88, joinery);
+  box(0.6, 0.9, 1.77, 10.04, FLOOR + 0.45, 16.22, joinery);
+  box(0.62, 0.04, 1.77, 10.03, FLOOR + 0.92, 16.22, stone);
+  box(0.9, 0.9, 2.2, 8.45, FLOOR + 0.45, 16.1, joinery);
+  box(1.0, 0.04, 2.3, 8.45, FLOOR + 0.92, 16.1, stone);
+  for (const [x, z, w] of [[13.2, 18.68, 2.0], [17.1, 18.68, 2.0], [2.7, 17.53, 1.8], [2.7, 18.23, 1.8]]) {
+    box(w, 2.2, 0.6, x, FLOOR + 1.1, z, joinery);
+  }
+  box(0.5, 2.0, 1.6, 2.04, FLOOR + 1.0, 13.3, joinery);
+  box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
+  box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
+
+  // Main hip roof over the widened house, with opening skylights and two whirlybirds.
+  const roofY = hipRoof(W0, W1, N0, S0);
+  const skyMat = mat(0x9cc4d8, { roughness: 0.1, metalness: 0.3 });
+  for (const [x, z] of [[8.45, 15.8], [12.3, 17.4]]) {
+    const s = box(0.7, 0.08, 0.95, x, roofY(x, z) + 0.06, z, skyMat, layer.roofs, false);
+    s.rotation.x = -PITCH;
+  }
+  {
+    const wx = 15.6, wz = 15.4, wy = roofY(wx, wz);
+    rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, layer.roofs, 16);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), aluminium);
+    dome.position.set(wx, wy + 0.28, wz);
+    layer.roofs.add(dome);
+  }
+
+  // Rear suite and deck share one skillion roof that sits over the main gutter.
+  {
+    const x0 = W0 - 0.3, x1 = 12.84, zh = 14.1, zo = SN - 0.3, yHi = 2.9, yLo = 2.62;
+    const yAt = (z) => yLo + ((z - zo) / (zh - zo)) * (yHi - yLo);
+    sheet(quad([x0, yHi, zh], [x1, yHi, zh], [x1, yLo, zo], [x0, yLo, zo]), roofSheet, (x, y, z) => [x, z]);
+    box(x1 - x0, 0.14, 0.12, (x0 + x1) / 2, yLo - 0.05, zo - 0.06, charcoal, layer.roofs);
+    box(0.06, 0.2, zh - zo, x1, (yLo + yHi) / 2 - 0.08, (zo + zh) / 2, charcoal, layer.roofs);
+    box(0.06, 0.2, zh - zo, x0, (yLo + yHi) / 2 - 0.08, (zo + zh) / 2, charcoal, layer.roofs);
+    for (const x of [W0, SE]) {
+      surface(quad([x, EAVE_Y, SN], [x, EAVE_Y, N0], [x, yAt(N0), N0], [x, yAt(SN), SN]), weatherboard, (px, py, pz) => [pz, py], layer.world);
+    }
+    // Deck: timber boards on the old sunroom slab area, steel posts and beam.
+    box(12.54 - SE, FLOOR, N0 - 10.18, (SE + 12.54) / 2, FLOOR / 2, (10.18 + N0) / 2, deckBoards);
+    box(1.8, 0.08, 0.35, 10.0, 0.04, 10.0, deckBoards);
+    const zb = 10.3, yb = yAt(zb) - 0.04;
+    box(12.6 - SE, 0.2, 0.1, (SE + 12.6) / 2, yb - 0.1, zb, charcoal);
+    for (const [x, z] of [[12.48, zb], [10.0, zb], [12.48, 13.9]]) box(0.09, yb - 0.2, 0.09, x, (yb - 0.2) / 2, z, charcoal);
+    box(0.1, 0.2, N0 - zb, 12.48, yAt(12) - 0.14, (zb + N0) / 2, charcoal);
+    label("Covered deck", "5.0 × 4.0 m", 10.04, 12.18, FLOOR + 1.5);
+  }
+
+  // Open carport 5.8 × 6.0 m with a flat charcoal roof, plus a covered walk to the front portico.
+  {
+    const flat = (x0, x1, z0, z1, yHi, yLo) => {
+      sheet(quad([x0, yHi, z0], [x1, yHi, z0], [x1, yLo, z1], [x0, yLo, z1]), roofSheet, (x, y, z) => [z, x]);
+      box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yLo - 0.06, z1, charcoal, layer.roofs);
+      for (const x of [x0, x1]) box(0.06, 0.16, z1 - z0, x, (yHi + yLo) / 2 - 0.06, (z0 + z1) / 2, charcoal, layer.roofs);
+    };
+    box(5.8, 0.05, 6.0, 3.1, 0.025, 24.6, concrete);
+    box(5.8, 0.05, 33.2 - 27.6, 3.1, 0.0, (27.6 + 33.2) / 2, concrete);
+    flat(0.1, 6.1, 21.7, 27.75, 2.78, 2.62);
+    for (const x of [0.3, 5.9]) {
+      for (const z of [22.3, 25.0, 27.6]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
+      box(0.1, 0.22, 5.6, x, 2.5, 24.95, charcoal);
+    }
+    label("Carport (open)", "5.8 × 6.0 m", 3.1, 24.6, 1.8);
+    flat(6.1, 10.6, 21.7, 23.0, 2.78, 2.72);
+    for (const x of [8.0, 10.5]) box(0.1, 2.6, 0.1, x, 1.3, 22.9, charcoal);
+    box(1.2, 0.05, 29.75 - S0, 9.75, 0.03, (S0 + 29.75) / 2, concrete);
+    box(3.15, 0.05, 1.2, 7.58, 0.03, 22.2, concrete);
+  }
+
+  // Feature front fence: 1.5 m horizontal slats between rendered piers, with gates.
+  {
+    const slatFence = (x0, z0, x1, z1, breaks = []) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
+      const n = Math.max(1, Math.round(len / 2.4));
+      const grid = [...Array(n + 1).keys()].map((i) => (len * i) / n);
+      const piers = grid.filter((d) => breaks.every((b) => Math.abs(d - b) > 0.9)).concat(breaks).sort((a, b) => a - b);
+      const at = (d) => [x0 + ux * d, z0 + uz * d];
+      const run = (a, b, h, y, d, m) => {
+        const [cx, cz] = at((a + b) / 2), l = b - a;
+        box(ux ? l : d, h, ux ? d : l, cx, y, cz, m);
+      };
+      for (const d of piers) {
+        const [x, z] = at(d);
+        box(0.35, 1.6, 0.35, x, 0.8, z, render);
+        box(0.42, 0.05, 0.42, x, 1.62, z, charcoal);
+      }
+      for (let i = 0; i < piers.length - 1; i++) {
+        const a = piers[i] + 0.175, b = piers[i + 1] - 0.175;
+        if (b - a < 0.2) continue;
+        run(a, b, 0.3, 0.15, 0.2, render);
+        for (let y = 0.36; y < 1.5; y += 0.085) run(a, b, 0.065, y, 0.025, slat);
+      }
+    };
+    slatFence(6.2, LOT_D, LOT_W, LOT_D, [3.05, 4.05]);
+    slatFence(LOT_W, S0, LOT_W, LOT_D);
+    slatFence(6.2, 27.6, 6.2, LOT_D);
+    slatFence(W1 + 0.1, S0, LOT_W, S0);
+    slatFence(0, S0, W0 - 0.1, S0);
+    box(0.3, 0.32, 0.4, 8.85, 1.25, LOT_D, charcoal);
+  }
+
+  // Service side (east): hot water heat pump, AC units, bins, fold-down clothesline and a concrete path to the shed.
+  rod([18.85, 0, 15.0], [18.85, 1.6, 15.0], 0.28, frame, layer.world, 16);
+  for (const z of [16.1, 16.95]) box(0.3, 0.6, 0.8, 18.62, 0.35, z, frame);
+  for (const [z, lid] of [[19.1, 0xc33b2f], [19.85, 0xe2c23a]]) {
+    box(0.55, 0.95, 0.65, 19.4, 0.48, z, mat(0x2f5a3a));
+    box(0.58, 0.05, 0.68, 19.4, 0.98, z, mat(lid));
+  }
+  box(0.6, 0.04, 2.4, 19.68, 1.7, 12.0, aluminium);
+  for (const z of [10.85, 13.15]) box(0.04, 0.5, 0.04, 19.95, 1.5, z, aluminium);
+  box(1.45, 0.04, 18.4, 19.22, 0.02, 12.4, concrete);
+
+  // Shed moved to the rear north-east corner.
+  shed(142.8, -826.9);
+}
+useLayer(before);
 
 
 // ---------- Room and property schedule ----------
@@ -669,39 +867,65 @@ const roomRects = [
   ["Sunroom", 649, 281, 1340, 672],
   ["Porch", 753, 1282, 1228, 1413],
 ];
+const roomRow = (name, w, d) => tr(name, `${fmt(w)} × ${fmt(d)} m &nbsp; ${fmt(w * d)} m²`);
+const schedule = { before: {}, after: {} };
 {
   let total = 0;
   const list = roomRects.map(([name, x0, y0, x1, y1, note]) => {
     const w = M(x1 - x0), d = M(y1 - y0);
     if (name !== "Porch") total += w * d;
-    return tr(name, `${fmt(w)} × ${fmt(d)} m &nbsp; ${fmt(w * d)} m²`) + (note ? tr(note, "", "sub") : "");
+    return roomRow(name, w, d) + (note ? tr(note, "", "sub") : "");
   });
   list.push(tr("Carport (double)", "5.7 × 5.7 m &nbsp; 31.3 m²"));
   list.push(tr("Shed", "3.0 × 3.0 m &nbsp; 9.0 m²"));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
-  rows("room-table", list);
+  schedule.before.rooms = list;
 
   const houseW = M(1913 - 446), houseD = M(1366 - 672);
-  rows("property-table", [
-    tr("Land", "587 m² &nbsp; 20 × 29 m"),
-    tr("Lot", "156 RP123045"),
-    tr("Council", "Toowoomba Regional"),
+  schedule.before.property = [
     tr("House footprint", `${fmt(houseW)} × ${fmt(houseD)} m`),
     tr("Living area", "153.9 m²"),
     tr("Bed / bath / car", "4 / 1 / 2"),
     tr("Front setback", `${fmt(LOT_D - HOUSE_SOUTH)} m`),
     tr("Rear yard", `${fmt(Z(672))} m (${fmt(Z(277))} to sunroom)`),
     tr("Side setbacks", `W ${fmt(X(446))} m, E ${fmt(LOT_W - X(1913))} m`),
-    tr("Ceiling height", `${fmt(CEIL)} m`),
-    tr("Last sold", "$630,000 (Jan 2025)"),
-    tr("Value estimate", "$730k – $870k"),
-    tr("Rent estimate", "$645 / week"),
-  ]);
+  ];
 }
+{
+  let total = 0;
+  const list = proposedRooms.map(([name, x0, z0, x1, z1]) => {
+    total += (x1 - x0) * (z1 - z0);
+    return roomRow(name, x1 - x0, z1 - z0);
+  });
+  list.push(roomRow("Covered deck", 5.0, 4.0));
+  list.push(roomRow("Carport (open)", 5.8, 6.0));
+  list.push(roomRow("Shed", 3.0, 3.0));
+  list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
+  schedule.after.rooms = list;
+  schedule.after.property = [
+    tr("House footprint", "16.9 × 7.4 m + suite 6.0 × 4.4 m"),
+    tr("Under roof", `${fmt(16.9 * 7.42 + 6 * 4.4)} m²`),
+    tr("Bed / bath / car", "5 / 2 + WC / 2"),
+    tr("Front setback", `${fmt(LOT_D - HOUSE_SOUTH)} m`),
+    tr("Rear yard", "14.2 m (9.8 to suite)"),
+    tr("Side setbacks", "W 1.5 m, E 1.6 m"),
+  ];
+}
+const propertyCommon = [
+  tr("Land", "587 m² &nbsp; 20 × 29 m"),
+  tr("Lot", "156 RP123045"),
+  tr("Council", "Toowoomba Regional"),
+];
+const propertyMarket = [
+  tr("Ceiling height", `${fmt(CEIL)} m`),
+  tr("Last sold", "$630,000 (Jan 2025)"),
+  tr("Value estimate", "$730k – $870k"),
+  tr("Rent estimate", "$645 / week"),
+];
 
 function renderReno() {
   if (!renoItems.length) {
-    rows("reno-table", [`<tr><td class="note">No renovation items yet.</td></tr>`]);
+    rows("reno-table", [`<tr><td class="note">Costing to follow once the design is approved.</td></tr>`]);
     return;
   }
   let sub = 0;
@@ -718,8 +942,14 @@ function renderReno() {
 
 function setPhase(phase) {
   const isAfter = phase === "after";
-  for (const g of [after, afterRoofs, afterLabels]) g.visible = isAfter;
-  for (const o of demolish) o.visible = !isAfter;
+  for (const g of Object.values(before)) g.visible = !isAfter;
+  for (const g of Object.values(after)) g.visible = isAfter;
+  const s = schedule[phase];
+  rows("room-table", s.rooms);
+  rows("property-table", [...propertyCommon, ...s.property, ...propertyMarket]);
+  document.getElementById("room-note").textContent = isAfter
+    ? "Proposed design, internal sizes. Full plan: renovation/plan.html."
+    : "Internal sizes measured off the 2025 floor plan (wall to wall).";
   document.getElementById("reno").hidden = !isAfter;
   document.getElementById("phase-before").classList.toggle("active", !isAfter);
   document.getElementById("phase-after").classList.toggle("active", isAfter);
