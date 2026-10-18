@@ -8,7 +8,7 @@
     html, body { margin: 0; height: 100%; background: #c9d7e4; font-family: "Segoe UI", Helvetica, Arial, sans-serif; }
     canvas { display: block; }
     #panel {
-      position: fixed; top: 16px; left: 16px; width: 290px;
+      position: fixed; top: 16px; left: 16px; width: 320px;
       background: rgba(22, 24, 28, 0.88); color: #f4f1ea;
       border-radius: 12px; padding: 14px 16px 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
@@ -21,8 +21,19 @@
       padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer;
     }
     button.active, button:hover { background: #8a6232; }
-    #facts { font-size: 12px; line-height: 1.45; color: #e7e1d6; }
-    #facts b { color: #fff; font-weight: 600; }
+    #panel { max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
+    #panel h2 { font-size: 12px; margin: 12px 0 4px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: #e7c89a; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; color: #e7e1d6; }
+    td { padding: 2px 0; vertical-align: top; white-space: nowrap; }
+    summary { cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary h2::after { content: " ▾"; }
+    details:not([open]) summary h2::after { content: " ▸"; }
+    summary h2 { display: inline-block; }
+    td.n { text-align: right; white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
+    tr.sub td { color: #9d978c; font-size: 11px; padding-left: 10px; }
+    tr.total td { border-top: 1px solid #555; font-weight: 650; color: #fff; padding-top: 4px; }
+    .note { font-size: 11px; color: #9d978c; margin-top: 4px; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -38,10 +49,24 @@
       <button id="toggle-roof" class="active">Roof on</button>
       <button id="toggle-labels" class="active">Labels on</button>
     </div>
-    <div id="facts">
-      <b>Internal</b> 153.9 m² &nbsp; <b>Carport</b> 31.3 m² &nbsp; <b>Shed</b> 9 m²<br>
-      <b>House</b> 15.7 × 7.4 m &nbsp; <b>Land</b> 20 × 29 m (587 m²)
+    <div class="row">
+      <button id="phase-before" class="active">Before</button>
+      <button id="phase-after">After</button>
     </div>
+    <div id="reno" hidden>
+      <h2>Renovation cost</h2>
+      <table id="reno-table"></table>
+      <div class="note">Rates are AUD estimates including GST.</div>
+    </div>
+    <details open>
+      <summary><h2>Property</h2></summary>
+      <table id="property-table"></table>
+    </details>
+    <details open>
+      <summary><h2>Rooms</h2></summary>
+      <table id="room-table"></table>
+      <div class="note">Internal sizes measured off the 2025 floor plan (wall to wall).</div>
+    </details>
   </div>
   <script type="importmap">
   {
@@ -202,6 +227,14 @@ const world = new THREE.Group();
 const roofs = new THREE.Group();
 const labels = new THREE.Group();
 scene.add(world, roofs, labels);
+
+// Renovation ("After") layers. Each sits inside its "Before" counterpart, so the Roof and Labels toggles still apply.
+const after = new THREE.Group();
+const afterRoofs = new THREE.Group();
+const afterLabels = new THREE.Group();
+world.add(after); roofs.add(afterRoofs); labels.add(afterLabels);
+const demolish = [];  // existing objects hidden in After
+const renoItems = []; // { item, qty, unit, rate } in AUD incl. GST
 
 // Box UVs in world metres so tiled textures keep a constant scale.
 function worldUV(geo, w, h, d, x, y, z) {
@@ -609,6 +642,92 @@ meshFence(drivewayEdge, Z(1413), drivewayEdge, LOT_D, { gate: [1.2, 2.1] });
 // Letterbox on the fence corner at the driveway.
 box(0.07, 1.0, 0.07, drivewayEdge, 0.5, LOT_D - 0.3, fenceWhite);
 box(0.32, 0.36, 0.42, drivewayEdge, 1.15, LOT_D - 0.3, charcoal);
+
+// ---------- Renovation (After) ----------
+// Add new work to `after` / `afterRoofs` / `afterLabels`, push replaced objects into `demolish`,
+// and list each costed line in `renoItems`.
+
+
+// ---------- Room and property schedule ----------
+const fmt = (n, d = 1) => n.toFixed(d);
+const money = (n) => "$" + Math.round(n).toLocaleString("en-AU");
+const rows = (el, list) => { document.getElementById(el).innerHTML = list.join(""); };
+const tr = (a, b, cls = "") => `<tr class="${cls}"><td>${a}</td><td class="n">${b}</td></tr>`;
+
+// Plan rectangles x0, y0, x1, y1 (internal faces of walls).
+const roomRects = [
+  ["Bed 4 / Living", 455, 681, 748, 1356, "incl. robe"],
+  ["Kitchen", 757, 681, 1223, 946, "incl. fridge recess & pantry"],
+  ["Lounge", 757, 946, 1223, 1278],
+  ["Bed 1", 1556, 1036, 1903, 1356, "incl. robe"],
+  ["Bed 2", 1231, 1036, 1548, 1356, "incl. robe"],
+  ["Bed 3", 1660, 681, 1903, 1028, "incl. robe"],
+  ["Bath", 1489, 681, 1651, 937],
+  ["WC", 1404, 681, 1480, 937],
+  ["Laundry", 1231, 681, 1395, 937],
+  ["Hall", 1231, 945, 1651, 1028],
+  ["Sunroom", 649, 281, 1340, 672],
+  ["Porch", 753, 1282, 1228, 1413],
+];
+{
+  let total = 0;
+  const list = roomRects.map(([name, x0, y0, x1, y1, note]) => {
+    const w = M(x1 - x0), d = M(y1 - y0);
+    if (name !== "Porch") total += w * d;
+    return tr(name, `${fmt(w)} × ${fmt(d)} m &nbsp; ${fmt(w * d)} m²`) + (note ? tr(note, "", "sub") : "");
+  });
+  list.push(tr("Carport (double)", "5.7 × 5.7 m &nbsp; 31.3 m²"));
+  list.push(tr("Shed", "3.0 × 3.0 m &nbsp; 9.0 m²"));
+  list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
+  rows("room-table", list);
+
+  const houseW = M(1913 - 446), houseD = M(1366 - 672);
+  rows("property-table", [
+    tr("Land", "587 m² &nbsp; 20 × 29 m"),
+    tr("Lot", "156 RP123045"),
+    tr("Council", "Toowoomba Regional"),
+    tr("House footprint", `${fmt(houseW)} × ${fmt(houseD)} m`),
+    tr("Living area", "153.9 m²"),
+    tr("Bed / bath / car", "4 / 1 / 2"),
+    tr("Front setback", `${fmt(LOT_D - HOUSE_SOUTH)} m`),
+    tr("Rear yard", `${fmt(Z(672))} m (${fmt(Z(277))} to sunroom)`),
+    tr("Side setbacks", `W ${fmt(X(446))} m, E ${fmt(LOT_W - X(1913))} m`),
+    tr("Ceiling height", `${fmt(CEIL)} m`),
+    tr("Last sold", "$630,000 (Jan 2025)"),
+    tr("Value estimate", "$730k – $870k"),
+    tr("Rent estimate", "$645 / week"),
+  ]);
+}
+
+function renderReno() {
+  if (!renoItems.length) {
+    rows("reno-table", [`<tr><td class="note">No renovation items yet.</td></tr>`]);
+    return;
+  }
+  let sub = 0;
+  const list = renoItems.map(({ item, qty, unit, rate }) => {
+    const cost = qty * rate;
+    sub += cost;
+    return tr(item, money(cost)) + tr(`${qty} ${unit} × ${money(rate)}`, "", "sub");
+  });
+  list.push(tr("Subtotal", money(sub), "total"));
+  list.push(tr("Contingency 10%", money(sub * 0.1)));
+  list.push(tr("Total", money(sub * 1.1), "total"));
+  rows("reno-table", list);
+}
+
+function setPhase(phase) {
+  const isAfter = phase === "after";
+  for (const g of [after, afterRoofs, afterLabels]) g.visible = isAfter;
+  for (const o of demolish) o.visible = !isAfter;
+  document.getElementById("reno").hidden = !isAfter;
+  document.getElementById("phase-before").classList.toggle("active", !isAfter);
+  document.getElementById("phase-after").classList.toggle("active", isAfter);
+  if (isAfter) renderReno();
+}
+document.getElementById("phase-before").onclick = () => setPhase("before");
+document.getElementById("phase-after").onclick = () => setPhase("after");
+setPhase("before");
 
 // ---------- UI ----------
 const views = {
