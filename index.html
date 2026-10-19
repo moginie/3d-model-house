@@ -705,7 +705,6 @@ useLayer(after);
   const roofSheet = mat(0x8d9090, { map: corrTex, roughness: 0.45, metalness: 0.35, side: THREE.FrontSide });
   const deckBoards = mat(0xa8744a, { map: boardTex, roughness: 0.8 });
   const render = mat(0xe9e4da, { roughness: 0.95 });
-  const slat = mat(0x8a5a36, { roughness: 0.6 });
   const stone = mat(0xe8e6e0, { roughness: 0.3 });
 
   // Slabs.
@@ -864,57 +863,91 @@ useLayer(after);
     label("Covered deck", "5.0 × 4.0 m", 10.04, 12.18, FLOOR + 1.5);
   }
 
-  // Open carport 5.8 × 6.0 m with a flat charcoal roof, plus a covered walk to the front portico.
+  // Open carport 5.8 × 6.0 m: freestanding skillion, clear of the house gutter.
   {
-    const flat = (x0, x1, z0, z1, yHi, yLo) => {
-      sheet(quad([x0, yHi, z0], [x1, yHi, z0], [x1, yLo, z1], [x0, yLo, z1]), roofSheet, (x, y, z) => [x, z]);
-      box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yLo - 0.06, z1, charcoal, layer.roofs);
-      for (const x of [x0, x1]) box(0.06, 0.16, z1 - z0, x, (yHi + yLo) / 2 - 0.06, (z0 + z1) / 2, charcoal, layer.roofs);
-    };
+    const x0 = 0.1, x1 = 6.1, z0 = 22.35, z1 = 27.9, yHi = 2.85, yLo = 2.62;
     box(5.8, 0.05, 6.0, 3.1, 0.025, 24.6, concrete);
     box(5.8, 0.05, 33.2 - 27.6, 3.1, 0.0, (27.6 + 33.2) / 2, concrete);
-    flat(0.1, 6.1, 21.7, 27.75, 2.78, 2.62);
+    sheet(quad([x0, yHi, z0], [x1, yHi, z0], [x1, yLo, z1], [x0, yLo, z1]), roofSheet, (x, y, z) => [x, z]);
+    box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yLo - 0.06, z1, charcoal, layer.roofs);
+    box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yHi - 0.06, z0, charcoal, layer.roofs);
+    for (const x of [x0, x1]) box(0.06, 0.16, z1 - z0, x, (yHi + yLo) / 2 - 0.06, (z0 + z1) / 2, charcoal, layer.roofs);
     for (const x of [0.3, 5.9]) {
-      for (const z of [22.3, 25.0, 27.6]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
-      box(0.1, 0.22, 5.6, x, 2.5, 24.95, charcoal);
+      for (const z of [22.6, 25.2, 27.7]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
+      box(0.1, 0.22, 5.3, x, 2.5, 25.15, charcoal);
     }
     label("Carport (open)", "5.8 × 6.0 m", 3.1, 24.6, 1.8);
-    flat(6.1, 10.6, 21.7, 23.0, 2.78, 2.72);
-    for (const x of [8.0, 10.5]) box(0.1, 2.6, 0.1, x, 1.3, 22.9, charcoal);
+  }
+
+  // Entry portico: its own small gable over the front door, 30° pitch, timber-lined gable end.
+  {
+    const x0 = 8.75, x1 = 10.75, xm = 9.75, z0 = 21.45, z1 = 23.2, ye = 2.5;
+    const yr = ye + (xm - x0) * Math.tan(THREE.MathUtils.degToRad(30));
+    sheet([
+      ...quad([x0, ye, z0], [x0, ye, z1], [xm, yr, z1], [xm, yr, z0]),
+      ...quad([x1, ye, z0], [xm, yr, z0], [xm, yr, z1], [x1, ye, z1]),
+    ], roofSheet, (x, y, z) => [z, Math.abs(x - xm)]);
+    surface([[x0 + 0.1, ye, z1 - 0.05], [x1 - 0.1, ye, z1 - 0.05], [xm, yr - 0.06, z1 - 0.05]], doorTimber, (x, y) => [x, y], layer.world);
+    for (const x of [x0, x1]) rod([x, ye - 0.02, z1 + 0.02], [xm, yr + 0.02, z1 + 0.02], 0.04, charcoal);
+    rod([xm, yr + 0.03, z0], [xm, yr + 0.03, z1], 0.05, capping);
+    box(x1 - x0 - 0.2, 0.18, 0.12, xm, ye - 0.1, z1 - 0.08, charcoal);
+    for (const x of [8.9, 10.6]) box(0.12, ye - 0.15, 0.12, x, (ye - 0.15) / 2, z1 - 0.1, charcoal);
     box(1.2, 0.05, 29.75 - S0, 9.75, 0.03, (S0 + 29.75) / 2, concrete);
     box(3.15, 0.05, 1.2, 7.58, 0.03, 22.2, concrete);
   }
 
-  // Feature front fence: 1.5 m horizontal slats between rendered piers, with gates.
+  // Front fence: slim black aluminium vertical battens on a low rendered plinth, no piers.
+  // A rendered letterbox wall sits beside the pedestrian gate; a low hedge lines the inside.
   {
-    const slatFence = (x0, z0, x1, z1, breaks = []) => {
+    const black = mat(0x1e2023, { roughness: 0.45, metalness: 0.3 });
+    const hedge = mat(0x3f5f32, { roughness: 1 });
+    const battens = [];
+    const m4 = new THREE.Matrix4();
+    // skip: [from, to] distances along the run left open (letterbox wall); gate: [from, to] gets a frame.
+    const battenFence = (x0, z0, x1, z1, { skip = [], gate = null } = {}) => {
       const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
-      const n = Math.max(1, Math.round(len / 2.4));
-      const grid = [...Array(n + 1).keys()].map((i) => (len * i) / n);
-      const piers = grid.filter((d) => breaks.every((b) => Math.abs(d - b) > 0.9)).concat(breaks).sort((a, b) => a - b);
       const at = (d) => [x0 + ux * d, z0 + uz * d];
       const run = (a, b, h, y, d, m) => {
         const [cx, cz] = at((a + b) / 2), l = b - a;
         box(ux ? l : d, h, ux ? d : l, cx, y, cz, m);
       };
-      for (const d of piers) {
-        const [x, z] = at(d);
-        box(0.35, 1.6, 0.35, x, 0.8, z, render);
-        box(0.42, 0.05, 0.42, x, 1.62, z, charcoal);
+      const open = (d) => skip.some(([a, b]) => d > a && d < b);
+      const cuts = [0, ...skip.flat(), len].sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++) {
+        if (!open((cuts[i] + cuts[i + 1]) / 2)) run(cuts[i], cuts[i + 1], 0.3, 0.15, 0.18, render);
       }
-      for (let i = 0; i < piers.length - 1; i++) {
-        const a = piers[i] + 0.175, b = piers[i + 1] - 0.175;
-        if (b - a < 0.2) continue;
-        run(a, b, 0.3, 0.15, 0.2, render);
-        for (let y = 0.36; y < 1.5; y += 0.085) run(a, b, 0.065, y, 0.025, slat);
+      for (let d = 0.05; d < len - 0.02; d += 0.085) {
+        if (open(d)) continue;
+        const [x, z] = at(d);
+        battens.push(m4.clone().makeRotationY(ux ? 0 : Math.PI / 2).setPosition(x, 0.925, z));
+      }
+      for (let d = 0; d <= len + 0.01; d += len / Math.max(1, Math.round(len / 2.4))) {
+        if (open(d)) continue;
+        const [x, z] = at(d);
+        box(0.05, 1.2, 0.05, x - uz * 0.04, 0.9, z + ux * 0.04, black);
+      }
+      if (gate) {
+        for (const d of gate) run(d - 0.025, d + 0.025, 1.2, 0.9, 0.06, black);
+        run(gate[0], gate[1], 0.04, 1.48, 0.05, black);
       }
     };
-    slatFence(6.2, LOT_D, LOT_W, LOT_D, [3.05, 4.05]);
-    slatFence(LOT_W, S0, LOT_W, LOT_D);
-    slatFence(6.2, 27.6, 6.2, LOT_D);
-    slatFence(W1 + 0.1, S0, LOT_W, S0);
-    slatFence(0, S0, W0 - 0.1, S0);
-    box(0.3, 0.32, 0.4, 8.85, 1.25, LOT_D, charcoal);
+    battenFence(6.2, LOT_D, LOT_W, LOT_D, { skip: [[1.55, 2.95]], gate: [3.05, 4.05] });
+    battenFence(LOT_W, S0, LOT_W, LOT_D);
+    battenFence(6.2, 27.6, 6.2, LOT_D);
+    battenFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
+    battenFence(0, S0, W0 - 0.1, S0, { gate: [0.1, 1.3] });
+    const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.065, 1.15, 0.016), black, battens.length);
+    battens.forEach((m, i) => inst.setMatrixAt(i, m));
+    inst.castShadow = inst.receiveShadow = true;
+    layer.world.add(inst);
+
+    // Letterbox wall with a timber-look number panel and black slot.
+    box(1.4, 1.6, 0.3, 8.45, 0.8, LOT_D, render);
+    box(0.5, 0.36, 0.02, 8.15, 1.15, LOT_D + 0.16, doorTimber);
+    box(0.34, 0.05, 0.03, 8.85, 1.2, LOT_D + 0.16, black);
+    // Low hedge inside the fence, either side of the path.
+    for (const [a, b] of [[6.4, 7.6], [10.5, 19.8]]) box(b - a, 0.6, 0.5, (a + b) / 2, 0.3, LOT_D - 0.45, hedge);
+    box(0.5, 0.6, LOT_D - S0 - 1.2, LOT_W - 0.45, 0.3, (S0 + 0.3 + LOT_D - 0.9) / 2, hedge);
   }
 
   // Service side (east): hot water heat pump, AC units, bins, fold-down clothesline and a concrete path to the shed.
