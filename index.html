@@ -37,6 +37,8 @@
     summary h2 { display: inline-block; }
     td.n { text-align: right; white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
     tr.sub td { color: #9d978c; font-size: 11px; padding-left: 10px; }
+    tr.section td { color: #e7c89a; font-weight: 600; padding-top: 8px; }
+    #reno-table td:first-child { white-space: normal; }
     tr.total td { border-top: 1px solid #555; font-weight: 650; color: #fff; padding-top: 4px; }
     .note { font-size: 11px; color: #9d978c; margin-top: 4px; line-height: 1.4; }
   </style>
@@ -67,7 +69,7 @@
     <div id="reno" hidden>
       <h2>Renovation cost</h2>
       <table id="reno-table"></table>
-      <div class="note">Rates are AUD estimates including GST.</div>
+      <div class="note">AUD including GST: Toowoomba 2026 builder rates for mid-range finishes, for budgeting only. Get quotes before committing.</div>
     </div>
     <details open>
       <summary><h2>Property</h2></summary>
@@ -255,7 +257,51 @@ const before = phaseLayer(), after = phaseLayer(), afterB = phaseLayer(), afterC
 for (const p of [before, after, afterB, afterC]) { world.add(p.world); roofs.add(p.roofs); labels.add(p.labels); }
 const layer = { ...before };
 const useLayer = (l) => Object.assign(layer, l);
-const renoItems = []; // { item, qty, unit, rate } in AUD incl. GST
+// Per design: { section } headings and { item, qty, unit, rate } lines in AUD incl. GST.
+// Toowoomba 2026 builder rates for mid-range finishes, including the builder's margin; for budgeting only.
+const renoItems = {
+  afterC: [
+    { section: "Approvals and site" },
+    { item: "Design, engineering, certifier, council siting variation", qty: 1, unit: "lump", rate: 14000 },
+    { item: "Site setup, skips, scaffold, temporary fencing", qty: 1, unit: "lump", rate: 9500 },
+    { section: "Demolition" },
+    { item: "Sunroom, old shed, carport, porch and front fence", qty: 1, unit: "lump", rate: 9000 },
+    { item: "Strip roof, ceilings, internal walls, kitchen and wet areas", qty: 1, unit: "lump", rate: 12000 },
+    { section: "Structure" },
+    { item: "Rebuild west wall 0.5 m out (slab, brick veneer)", qty: 7.4, unit: "m", rate: 2600 },
+    { item: "New 15° gable roof: trusses, Colorbond, sarking, gutters", qty: 155, unit: "m²", rate: 210 },
+    { item: "Raked ceiling to kitchen · living (scissor trusses, beam)", qty: 1, unit: "lump", rate: 9500 },
+    { item: "Widen opening, steel lintel, 2.75 m stacking doors", qty: 1, unit: "lump", rate: 11500 },
+    { item: "Resize front living window", qty: 1, unit: "lump", rate: 2800 },
+    { item: "New internal walls (Bed 4, bathroom, ensuite)", qty: 14, unit: "m", rate: 420 },
+    { section: "Interiors" },
+    { item: "Flat ceilings and insulation", qty: 95, unit: "m²", rate: 75 },
+    { item: "Raked ceiling lining and insulation", qty: 36, unit: "m²", rate: 95 },
+    { item: "Kitchen with island and appliances", qty: 1, unit: "lump", rate: 32000 },
+    { item: "Built-in L banquette and fixed table", qty: 1, unit: "lump", rate: 4800 },
+    { item: "Main bathroom 3.8 × 2.8 m with toilet", qty: 1, unit: "lump", rate: 30000 },
+    { item: "Ensuite 2.2 × 1.6 m", qty: 1, unit: "lump", rate: 21000 },
+    { item: "Built-in robes", qty: 4, unit: "robes", rate: 1900 },
+    { item: "Engineered timber flooring", qty: 99, unit: "m²", rate: 95 },
+    { item: "Internal doors and hardware", qty: 8, unit: "doors", rate: 650 },
+    { item: "Painting inside and trims", qty: 1, unit: "lump", rate: 14000 },
+    { item: "Electrical rewire, LED lighting, switchboard", qty: 1, unit: "lump", rate: 16000 },
+    { item: "Plumbing and drainage relocations", qty: 1, unit: "lump", rate: 9000 },
+    { section: "Outdoors" },
+    { item: "Covered deck 6.0 × 3.6 m with its own skillion", qty: 21.6, unit: "m²", rate: 1350 },
+    { item: "Outdoor zip blinds", qty: 3, unit: "blinds", rate: 2900 },
+    { item: "Studio shell 5.4 × 3.0 m: slab, frame, cladding, roof", qty: 16.2, unit: "m²", rate: 2200 },
+    { item: "Studio bathroom and laundry fit-out, sewer connection", qty: 1, unit: "lump", rate: 24000 },
+    { item: "Carport 6.4 × 6.1 m gable with slab", qty: 39, unit: "m²", rate: 480 },
+    { item: "Driveway and walk concrete", qty: 30, unit: "m²", rate: 110 },
+    { item: "White slat fence 1.5 m", qty: 21, unit: "m", rate: 380 },
+    { item: "Gates, letterbox, house number", qty: 1, unit: "lump", rate: 2200 },
+    { item: "Colorbond side fences to the front line", qty: 14.4, unit: "m", rate: 160 },
+    { item: "Stepping-stone path", qty: 17, unit: "pavers", rate: 90 },
+    { item: "Small trees, 45 L", qty: 12, unit: "trees", rate: 220 },
+    { item: "Turf repair and garden beds", qty: 1, unit: "lump", rate: 4500 },
+  ],
+};
 
 // Box UVs in world metres so tiled textures keep a constant scale.
 function worldUV(geo, w, h, d, x, y, z) {
@@ -1474,16 +1520,18 @@ const propertyMarket = [
   tr("Rent estimate", "$645 / week"),
 ];
 
-function renderReno() {
-  if (!renoItems.length) {
-    rows("reno-table", [`<tr><td class="note">Costing to follow once the design is approved.</td></tr>`]);
+function renderReno(phase) {
+  const items = renoItems[phase];
+  if (!items) {
+    rows("reno-table", [`<tr><td class="note">Costed for Option C only.</td></tr>`]);
     return;
   }
   let sub = 0;
-  const list = renoItems.map(({ item, qty, unit, rate }) => {
+  const list = items.map(({ section, item, qty, unit, rate }) => {
+    if (section) return `<tr class="section"><td colspan="2">${section}</td></tr>`;
     const cost = qty * rate;
     sub += cost;
-    return tr(item, money(cost)) + tr(`${qty} ${unit} × ${money(rate)}`, "", "sub");
+    return tr(item, money(cost)) + (qty === 1 ? "" : tr(`${qty} ${unit} × ${money(rate)}`, "", "sub"));
   });
   list.push(tr("Subtotal", money(sub), "total"));
   list.push(tr("Contingency 10%", money(sub * 0.1)));
@@ -1502,7 +1550,7 @@ function setPhase(phase) {
   rows("property-table", [...propertyCommon, ...s.property, ...propertyMarket]);
   document.getElementById("room-note").textContent = s.note;
   document.getElementById("reno").hidden = phase === "before";
-  if (phase !== "before") renderReno();
+  if (phase !== "before") renderReno(phase);
 }
 for (const k of Object.keys(phases)) document.getElementById("phase-" + k).onclick = () => setPhase(k);
 setPhase("before");
