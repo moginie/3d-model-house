@@ -41,10 +41,17 @@
     #reno-table td:first-child { white-space: normal; }
     tr.total td { border-top: 1px solid #555; font-weight: 650; color: #fff; padding-top: 4px; }
     .note { font-size: 11px; color: #9d978c; margin-top: 4px; line-height: 1.4; }
+    #divider { position: fixed; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 8px rgba(0,0,0,.35); cursor: ew-resize; touch-action: none; }
+    #divider[hidden] { display: none; }
+    #divider .knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; border-radius: 50%; background: #fff; color: #333; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+    #divider .tag { position: absolute; bottom: 20px; white-space: nowrap; background: rgba(22,24,28,.85); color: #fff; font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 6px; }
+    #divider .tag.l { right: 12px; }
+    #divider .tag.r { left: 12px; }
   </style>
 </head>
 <body>
   <button id="menu-show" title="Show menu (M)">☰ Menu</button>
+  <div id="divider" hidden><div class="knob">◀ ▶</div><div class="tag l">Before</div><div class="tag r" id="compare-right"></div></div>
   <div id="panel">
     <div class="head">
       <h1>21 Merino Street, Harristown</h1>
@@ -59,6 +66,7 @@
     <div class="row">
       <button id="toggle-roof" class="active">Roof on</button>
       <button id="toggle-labels" class="active">Labels on</button>
+      <button id="compare" title="Drag the handle to compare Before with the selected After">Compare</button>
     </div>
     <div class="row">
       <button id="phase-before" class="active">Before</button>
@@ -1540,11 +1548,17 @@ function renderReno(phase) {
 }
 
 const phases = { before, after, afterB, afterC };
+const phaseNames = { before: "Before", after: "After A", afterB: "After B", afterC: "After C" };
+const showOnly = (phase) => {
+  for (const [k, p] of Object.entries(phases)) for (const g of Object.values(p)) g.visible = k === phase;
+};
+// Compare: Before left of the handle, the selected After (or C while Before is selected) to the right.
+const compare = { on: false, split: 0.5, right: "afterC" };
 function setPhase(phase) {
-  for (const [k, p] of Object.entries(phases)) {
-    for (const g of Object.values(p)) g.visible = k === phase;
-    document.getElementById("phase-" + k).classList.toggle("active", k === phase);
-  }
+  showOnly(phase);
+  for (const k of Object.keys(phases)) document.getElementById("phase-" + k).classList.toggle("active", k === phase);
+  if (phase !== "before") compare.right = phase;
+  document.getElementById("compare-right").textContent = phaseNames[compare.right];
   const s = schedule[phase];
   rows("room-table", s.rooms);
   rows("property-table", [...propertyCommon, ...s.property, ...propertyMarket]);
@@ -1593,9 +1607,41 @@ addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+const divider = document.getElementById("divider");
+const placeDivider = () => { divider.style.left = `${compare.split * 100}%`; };
+document.getElementById("compare").onclick = (e) => {
+  compare.on = !compare.on;
+  e.currentTarget.classList.toggle("active", compare.on);
+  divider.hidden = !compare.on;
+  placeDivider();
+  if (!compare.on) setPhase(document.querySelector('[id^="phase-"].active').id.slice(6));
+};
+divider.addEventListener("pointerdown", (e) => {
+  divider.setPointerCapture(e.pointerId);
+  const move = (ev) => {
+    compare.split = Math.min(0.98, Math.max(0.02, ev.clientX / innerWidth));
+    placeDivider();
+  };
+  divider.addEventListener("pointermove", move);
+  divider.addEventListener("pointerup", () => divider.removeEventListener("pointermove", move), { once: true });
+  e.stopPropagation();
+});
+
 renderer.setAnimationLoop(() => {
   controls.update();
-  renderer.render(scene, camera);
+  if (!compare.on) {
+    renderer.render(scene, camera);
+    return;
+  }
+  const w = innerWidth, h = innerHeight, x = Math.round(w * compare.split);
+  renderer.setScissorTest(true);
+  for (const [phase, x0, x1] of [["before", 0, x], [compare.right, x, w]]) {
+    showOnly(phase);
+    renderer.setScissor(x0, 0, x1 - x0, h);
+    renderer.setViewport(0, 0, w, h);
+    renderer.render(scene, camera);
+  }
+  renderer.setScissorTest(false);
 });
   </script>
 </body>
