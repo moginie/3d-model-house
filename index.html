@@ -786,11 +786,11 @@ const designs = {
   afterC: {
     W0: 1.04,
     rooms: [
-      ["Master", 1.29, 14.43, 5.27, 17.83, "bed"],
-      ["Bed 5", 1.29, 17.93, 5.27, 21.35, "bed"],
+      ["Master", 1.29, 14.43, 5.27, 17.83, "bed", { dims: "4.0 × 3.4 m (L)", area: -1.73 }],
+      ["Ensuite", 1.29, 17.13, 3.49, 18.73, "wet"],
+      ["Bed 5", 1.29, 18.83, 5.27, 21.35, "bed", { dims: "4.0 × 3.4 m (L)", area: 1.51 }],
       ["Kitchen · Living", 5.37, 14.43, 10.34, 21.35, "live"],
-      ["Bath", 10.44, 14.43, 13.14, 17.18, "wet"],
-      ["WC", 13.24, 14.43, 14.24, 17.18, "wet"],
+      ["Bath", 10.44, 14.43, 14.24, 17.18, "wet"],
       ["Bed 4", 14.34, 14.43, 18.19, 17.18, "bed"],
       ["Hall", 10.44, 17.28, 18.19, 18.28, "bed"],
       ["Bed 2", 10.44, 18.38, 14.29, 21.35, "bed"],
@@ -799,29 +799,33 @@ const designs = {
     SN: N0, wingE: W0, wingSlabs: [], wing: [],
     deck: [5.32, 11.32, 10.58], deckWestPosts: true,
     rear: [{ to: 5.38, z: N0 }, { to: 11.26, z: 10.58, open: true }, { to: W1, z: N0 }],
-    north: [[1.7, 3.0, "window"], [3.9, 4.9, "high"], [7.5, 9.5, "slider"], [11.0, 12.6, "high"], [13.45, 14.0, "high"], [15.4, 17.4, "window"]],
+    north: [[1.7, 3.0, "window"], [3.6, 4.6, "window"], [7.5, 9.5, "slider"], [11.0, 12.6, "high"], [13.45, 14.0, "high"], [15.4, 17.4, "window"]],
     east: [[17.33, 18.23, "back"], [19.0, 20.8, "window"]],
-    hallDoors: [[11.5, 12.3, "door"], [13.34, 14.14, "door"], [16.6, 17.4, "door"]],
-    eastSplits: [13.19, 14.29],
+    hallDoors: [[11.5, 12.3, "door"], [16.6, 17.4, "door"]],
+    eastSplits: [14.29],
+    west: [[15.2, 17.0, "window"], [17.4, 18.4, "high"], [19.1, 20.7, "window"]],
+    westSplitFrom: 3.54,
+    bed5Z: 20.08,
     ownKitchen: true,
     skylights: [[8.4, 16.0], [12.3, 17.8]],
     deckLabel: "6.0 × 3.6 m",
     pathZ0: 8.4,
     carportEntry: true,
     fence: "picket",
-    extraRows: [["Ensuite (in master)", 1.85, 1.8]],
     fitout({ bed, chair, oak, fabric, stone, wallM }) {
-      // Master with a 1.85 × 1.8 m ensuite in its north-east corner.
-      wallM("v", 3.37, N0, 16.28);
-      wallM("h", 16.28, 3.37, 5.32, { open: [[4.2, 5.0, "door"]] });
-      box(1.85, 0.012, 1.8, 4.345, FLOOR + 0.006, 15.33, wetTile);
-      box(0.5, 0.85, 0.9, 3.67, FLOOR + 0.43, 15.4, joinery);
-      box(0.52, 0.04, 0.92, 3.67, FLOOR + 0.87, 15.4, stone);
-      box(0.02, 2.0, 0.9, 4.37, FLOOR + 1.0, 14.88, mat(0xcfe3ea, { transparent: true, opacity: 0.35 }));
-      box(0.4, 0.4, 0.65, 4.82, FLOOR + 0.2, 15.85, mat(0xf6f6f4, { roughness: 0.3 }));
-      label("Ensuite", "1.9 × 1.8 m", 4.35, 15.3);
+      const W0C = 1.04;
+      // Ensuite 2.2 × 1.6 m off the master, in the space of the two old robes; Bed 5 steps around it.
+      wallM("h", 17.08, W0C, 3.54);
+      wallM("v", 3.54, 17.08, 18.78, { open: [[17.13, 17.83, "door"]] });
+      wallM("h", 18.78, W0C, 3.54);
+      box(2.2, 0.05, 1.6, 2.39, FLOOR + 0.025, 17.93, wetTile);
+      box(1.68, 0.04, 0.9, 4.43, FLOOR + 0.02, 18.38, timber);
+      box(0.02, 2.0, 0.9, 2.19, FLOOR + 1.0, 18.28, mat(0xcfe3ea, { transparent: true, opacity: 0.35 }));
+      box(1.0, 0.85, 0.5, 2.85, FLOOR + 0.43, 18.48, joinery);
+      box(1.02, 0.04, 0.52, 2.85, FLOOR + 0.87, 18.48, stone);
+      box(0.4, 0.4, 0.65, 2.75, FLOOR + 0.2, 17.46, mat(0xf6f6f4, { roughness: 0.3 }));
       bed(1.29, 15.75, 1, 0);
-      box(1.8, 2.2, 0.6, 2.3, FLOOR + 1.1, 17.53, joinery);
+      box(0.6, 2.2, 1.8, 4.97, FLOOR + 1.1, 15.5, joinery);
 
       // Kitchen: bench run on the east wall with the fridge and pantry at its south end, island across the room.
       box(0.6, 0.9, 1.77, 10.04, FLOOR + 0.45, 15.32, joinery);
@@ -845,8 +849,10 @@ const designs = {
 
       bed(14.34, 15.8, 1, 0);
       box(0.6, 2.2, 2.0, 17.89, FLOOR + 1.1, 15.6, joinery);
-      box(0.5, 2.0, 0.6, 12.86, FLOOR + 1.0, 16.85, joinery);
-      box(0.4, 0.4, 0.65, 13.74, FLOOR + 0.2, 14.8, mat(0xf6f6f4, { roughness: 0.3 }));
+      box(0.5, 2.0, 0.6, 13.99, FLOOR + 1.0, 16.88, joinery);
+      box(1.0, 0.85, 0.5, 13.1, FLOOR + 0.43, 16.93, joinery);
+      box(1.02, 0.04, 0.52, 13.1, FLOOR + 0.87, 16.93, stone);
+      box(0.4, 0.4, 0.65, 13.9, FLOOR + 0.2, 14.8, mat(0xf6f6f4, { roughness: 0.3 }));
 
       // Outdoor dining and a sofa on the deck.
       box(1.8, 0.04, 0.9, 7.6, FLOOR + 0.72, 12.4, oak);
@@ -912,13 +918,13 @@ function buildAfter(target, d) {
   // External walls: brick veneer to match, larger windows, no security grilles.
   wallM("h", N0 + c, W0, W1, { ...ext, out: -1, open: d.north });
   wallM("h", S0 - c, W0, W1, { ...ext, out: 1, open: [[2.8, 4.6, "window"], [5.9, 9.0, "tall"], [9.3, 10.2, "entry"], [11.4, 13.4, "window"], [15.3, 17.3, "window"]] });
-  wallM("v", W0 + c, N0, S0, { ...ext, out: -1, open: [[15.2, 17.0, "window"], [18.6, 20.4, "window"]] });
+  wallM("v", W0 + c, N0, S0, { ...ext, out: -1, open: d.west ?? [[15.2, 17.0, "window"], [18.6, 20.4, "window"]] });
   wallM("v", W1 - c, N0, S0, { ...ext, out: 1, open: d.east ?? [[15.0, 16.4, "window"], [17.33, 18.23, "back"], [19.0, 20.8, "window"]] });
   for (const w of d.wing) wallM(...w);
 
   // Internal walls. The two walls either side of the living area stay where they are.
   wallM("v", 5.32, N0, S0, { open: [[16.8, 17.6, "door"], [18.2, 19.0, "door"]] });
-  wallM("h", 17.88, W0, 5.32);
+  wallM("h", 17.88, d.westSplitFrom ?? W0, 5.32);
   wallM("v", 10.40, N0, S0, { open: [[17.28, 18.28, "open"]] });
   wallM("h", 17.23, 10.40, W1, { open: d.hallDoors ?? [[11.5, 12.3, "door"], [13.4, 14.2, "door"], [14.6, 15.6, "door"], [16.6, 17.4, "door"]] });
   wallM("h", 18.33, 10.40, W1, { open: [[11.0, 11.8, "door"], [14.8, 15.6, "door"]] });
@@ -927,9 +933,10 @@ function buildAfter(target, d) {
 
   // Floors and labels.
   const floorMat = { bed: timber, live: timber, wet: wetTile };
-  for (const [name, x0, z0, x1, z1, kind] of d.rooms) {
+  // An optional seventh entry { dims, area } describes an L-shaped room: area is added to the rectangle's.
+  for (const [name, x0, z0, x1, z1, kind, lShape] of d.rooms) {
     const small = name === "WIR" || name === "Linen" || name === "Hall";
-    const dims = name === "WC" ? null : `${(x1 - x0).toFixed(1)} × ${(z1 - z0).toFixed(1)} m`;
+    const dims = name === "WC" ? null : lShape?.dims ?? `${(x1 - x0).toFixed(1)} × ${(z1 - z0).toFixed(1)} m`;
     room(small ? null : name, dims, PX(x0), PY(z0), PX(x1), PY(z1), floorMat[kind]);
   }
 
@@ -941,7 +948,7 @@ function buildAfter(target, d) {
     box(0.9, 0.9, 2.2, d.islandX, FLOOR + 0.45, 16.1, joinery);
     box(1.0, 0.04, 2.3, d.islandX, FLOOR + 0.92, 16.1, stone);
   }
-  for (const [x, z, w] of [[13.2, 18.68, 2.0], [17.1, 18.68, 2.0], [2.7, 18.23, 1.8]]) {
+  for (const [x, z, w] of [[13.2, 18.68, 2.0], [17.1, 18.68, 2.0]]) {
     box(w, 2.2, 0.6, x, FLOOR + 1.1, z, joinery);
   }
   box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
@@ -966,7 +973,7 @@ function buildAfter(target, d) {
       box(0.45, 0.05, 0.45, x, FLOOR + 0.45, z, fabric);
       box(fx ? 0.05 : 0.45, 0.45, fx ? 0.45 : 0.05, x - fx * 0.21, FLOOR + 0.7, z - fz * 0.21, fabric);
     };
-    bed(W0 + 0.25, 19.9, 1, 0);
+    bed(W0 + 0.25, d.bed5Z ?? 19.9, 1, 0);
     bed(10.44, 19.95, 1, 0, 1.53, 2.03, [-1]);
     bed(14.39, 19.85, 1, 0);
 
@@ -983,6 +990,7 @@ function buildAfter(target, d) {
     const standard = () => {
       bed(3.3, 14.43, 0, 1);
       box(1.8, 2.2, 0.6, 2.7, FLOOR + 1.1, 17.53, joinery);
+      box(1.8, 2.2, 0.6, 2.7, FLOOR + 1.1, 18.23, joinery);
       box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
     };
     d.fitout({ bed, chair, oak, fabric, stone, standard, wallM });
@@ -1278,12 +1286,13 @@ for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
   { key: "afterB", deck: [6.0, 3.6], foot: "16.9 × 7.4 m + rear wing 9.05 × 3.6 m", enclosed: 16.9 * 7.42 + 9.05 * 3.6,
     yard: "14.2 m (10.6 to rear wing)", sides: "W 1.5 m, E 1.6 m", outb: ["Shed", 3.0, 3.0], bb: "5 / 2 + WC / 2" },
   { key: "afterC", deck: [6.0, 3.6], foot: "17.4 × 7.4 m, no rear rooms", enclosed: 17.4 * 7.42,
-    yard: "14.2 m (10.6 to deck)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry studio", 3.8, 3.0], bb: "5 / 2 + WC / 2" },
+    yard: "14.2 m (10.6 to deck)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry studio", 3.8, 3.0], bb: "5 / 2 / 2" },
 ]) {
   let total = 0;
-  const list = designs[key].rooms.map(([name, x0, z0, x1, z1]) => {
-    total += (x1 - x0) * (z1 - z0);
-    return roomRow(name, x1 - x0, z1 - z0);
+  const list = designs[key].rooms.map(([name, x0, z0, x1, z1, , lShape]) => {
+    const area = (x1 - x0) * (z1 - z0) + (lShape?.area ?? 0);
+    total += area;
+    return lShape ? tr(name, `${lShape.dims} &nbsp; ${fmt(area)} m²`) : roomRow(name, x1 - x0, z1 - z0);
   });
   for (const r of designs[key].extraRows ?? []) list.push(roomRow(...r));
   list.push(roomRow("Covered deck", ...deck));
@@ -1307,11 +1316,11 @@ schedule.afterB.note = "Option B, internal sizes. Changes from A: master suite a
   "the kitchen through a wide opening. The deck moves behind the bathroom wing, becomes larger and opens off the " +
   "dining room. The kitchen aisle is 1.1 m instead of 0.85 m, and the island seats three. Bathroom wing " +
   "windows facing the deck are high and frosted.";
-schedule.afterC.note = "Option C, internal sizes. Nothing behind the house except the covered deck. The WC, linen and " +
-  "laundry become Bed 4 (3.9 × 2.8 m) with a WC beside the bathroom. The old Bed 4 is the master (4.0 × 3.4 m) with a " +
-  "1.9 × 1.8 m ensuite in its corner; the west wall moves out to 1.0 m from the fence. Dining sits in the living area. " +
-  "The laundry and store go to a studio by the side path. White timber picket fence; entry is through the carport, " +
-  "with no path from the street. The 1.0 m west setback needs a siting variation from council.";
+schedule.afterC.note = "Option C, internal sizes. Nothing behind the house except the covered deck. The old WC, linen " +
+  "and laundry become Bed 4 (3.9 × 2.8 m) and a combined bathroom with toilet (3.8 × 2.8 m). The old Bed 4 is the " +
+  "master (4.0 × 3.4 m) with a 2.2 × 1.6 m ensuite where the two robes were; Bed 5 loses its robe and steps around " +
+  "it. The west wall moves out to 1.0 m from the fence. Laundry and store go to a studio by the side path. White " +
+  "timber picket fence; entry is through the carport. The 1.0 m west setback needs a siting variation from council.";
 const propertyCommon = [
   tr("Land", "587 m² &nbsp; 20 × 29 m"),
   tr("Lot", "156 RP123045"),
