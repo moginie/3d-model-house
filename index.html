@@ -754,113 +754,64 @@ useLayer(after);
   box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
   box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
 
-  // One corrugated hip roof over the house, master suite and deck: 15° pitch, every eave at the same height.
-  // Roof height is the pitch times the distance to the nearest eave. At the inside corner where the deck meets
-  // the main block the two adjoining slopes form a valley, so that pair takes the higher of the two.
+  // One straight gable roof over everything: corrugated, 15° pitch, ridge running the full width east–west,
+  // gable ends on both sides. A single ridge needs a straight rear eave, so the corner beside the deck
+  // (behind the laundry) is covered too and becomes a paved patio.
   {
-    const pitch = THREE.MathUtils.degToRad(15), tp = Math.tan(pitch), eave = 0.45, DE = 12.54;
-    const ex0 = W0 - eave, ex1 = W1 + eave, ezS = S0 + eave, ezN = SN - eave, ezM = N0 - eave, exD = DE + eave;
-    const plane = (a, b, c) => ({ a, b, v: ([x, z]) => a * x + b * z + c });
-    const north = plane(0, 1, -ezN), south = plane(0, -1, ezS), west = plane(1, 0, -ex0), east = plane(-1, 0, ex1);
-    const deckEast = plane(-1, 0, exD), mainNorth = plane(0, 1, -ezM);
-    const convex = [north, south, west, east];
-    const valley = (p) => (deckEast.v(p) >= mainNorth.v(p) ? deckEast : mainNorth);
-    const activePlane = (x, z) => [...convex, valley([x, z])].reduce((m, k) => (k.v([x, z]) < m.v([x, z]) ? k : m));
-    const roofY = (x, z) => EAVE_Y + tp * activePlane(x, z).v([x, z]);
-
-    // Keep the part of a convex polygon where f <= 0.
-    const clip = (poly, f) => {
-      const out = [];
-      poly.forEach((p, i) => {
-        const q = poly[(i + 1) % poly.length], fp = f(p), fq = f(q);
-        if (fp <= 0) out.push(p);
-        if ((fp < 0 && fq > 0) || (fp > 0 && fq < 0)) {
-          const t = fp / (fp - fq);
-          out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
-        }
-      });
-      return out;
-    };
-    const area = (poly) => Math.abs(poly.reduce((s, p, i) => {
-      const q = poly[(i + 1) % poly.length];
-      return s + p[0] * q[1] - q[0] * p[1];
-    }, 0)) / 2;
-
-    const rects = [[ex0, ezM, ex1, ezS], [ex0, ezN, exD, ezM]];
-    const creases = new Map();
-    for (const [x0, z0, x1, z1] of rects) {
-      surface(quad([x0, EAVE_Y, z0], [x1, EAVE_Y, z0], [x1, EAVE_Y, z1], [x0, EAVE_Y, z1]), soffit);
-      for (const [sel, other] of [[deckEast, mainNorth], [mainNorth, deckEast]]) {
-        const active = [...convex, sel];
-        for (const k of active) {
-          let poly = clip([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], (p) => other.v(p) - sel.v(p));
-          for (const j of active) if (j !== k) poly = clip(poly, (p) => k.v(p) - j.v(p));
-          if (poly.length < 3 || area(poly) < 1e-4) continue;
-          const pts = poly.map(([x, z]) => [x, EAVE_Y + tp * k.v([x, z]), z]);
-          const tris = [];
-          for (let i = 1; i < pts.length - 1; i++) tris.push(pts[0], pts[i], pts[i + 1]);
-          sheet(tris, roofSheet, (x, y, z) => [-k.b * x + k.a * z, (k.a * x + k.b * z) / Math.cos(pitch)]);
-          pts.forEach((p, i) => {
-            const q = pts[(i + 1) % pts.length];
-            const key = [p, q].map(([x, , z]) => `${x.toFixed(2)},${z.toFixed(2)}`).sort().join("|");
-            creases.set(key, [p, q]);
-          });
-        }
-      }
-    }
-    // Ridges and hips get capping, valleys a valley gutter. Seams between coplanar pieces are skipped.
-    for (const [p, q] of creases.values()) {
-      const len = Math.hypot(q[0] - p[0], q[2] - p[2]);
-      if (len < 0.05 || (p[1] - EAVE_Y < 0.01 && q[1] - EAVE_Y < 0.01)) continue;
-      const mx = (p[0] + q[0]) / 2, mz = (p[2] + q[2]) / 2, nx = -(q[2] - p[2]) / len * 0.15, nz = (q[0] - p[0]) / len * 0.15;
-      const bend = roofY(mx + nx, mz + nz) + roofY(mx - nx, mz - nz) - 2 * roofY(mx, mz);
-      if (bend < -0.005) rod([p[0], p[1] + 0.03, p[2]], [q[0], q[1] + 0.03, q[2]], 0.07, capping);
-      else if (bend > 0.005) rod([p[0], p[1] + 0.01, p[2]], [q[0], q[1] + 0.01, q[2]], 0.05, charcoal);
+    const pitch = THREE.MathUtils.degToRad(15), tp = Math.tan(pitch), eave = 0.45, rake = 0.3, DE = 12.54;
+    const ezN = SN - eave, ezS = S0 + eave, zr = (ezN + ezS) / 2, yr = EAVE_Y + tp * (zr - ezN);
+    const rx0 = W0 - rake, rx1 = W1 + rake;
+    const roofY = (z) => EAVE_Y + tp * Math.min(z - ezN, ezS - z);
+    const up = (z) => Math.abs(z - zr) / Math.cos(pitch);
+    sheet([
+      ...quad([rx0, EAVE_Y, ezN], [rx1, EAVE_Y, ezN], [rx1, yr, zr], [rx0, yr, zr]),
+      ...quad([rx0, yr, zr], [rx1, yr, zr], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]),
+    ], roofSheet, (x, y, z) => [x, up(z)]);
+    surface(quad([rx0, EAVE_Y, ezN], [rx1, EAVE_Y, ezN], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]), soffit);
+    rod([rx0, yr + 0.03, zr], [rx1, yr + 0.03, zr], 0.07, capping);
+    for (const x of [rx0, rx1]) {
+      for (const z of [ezN, ezS]) rod([x, EAVE_Y - 0.02, z], [x, yr + 0.01, zr], 0.05, charcoal);
     }
 
-    // Quad gutters on every eave and downpipes at the corners.
+    // Gable ends: white weatherboard from the wall plate to the roof, with a louvred vent near the apex.
+    for (const [x, out] of [[W0 - 0.005, -1], [W1 + 0.005, 1]]) {
+      const pts = [[SN, EAVE_Y], [S0, EAVE_Y], [S0, roofY(S0)], [zr, yr], [SN, roofY(SN)]].map(([z, y]) => [x, y, z]);
+      const tris = [];
+      for (let i = 1; i < pts.length - 1; i++) tris.push(pts[0], pts[i], pts[i + 1]);
+      surface(tris, weatherboard, (px, py, pz) => [pz, py], layer.world);
+      box(0.06, 0.5, 0.9, x + out * 0.03, yr - 0.6, zr, charcoal);
+      for (let i = 0; i < 4; i++) box(0.07, 0.03, 0.82, x + out * 0.05, yr - 0.79 + i * 0.12, zr, frame);
+    }
+
+    // Gutters on both eaves, downpipes at the four corners.
     const gy = EAVE_Y - 0.06;
-    for (const [x0, z0, x1, z1, nx, nz] of [
-      [ex0, ezS, ex1, ezS, 0, 1], [ex1, ezM, ex1, ezS, 1, 0], [exD, ezM, ex1, ezM, 0, -1],
-      [exD, ezN, exD, ezM, 1, 0], [ex0, ezN, exD, ezN, 0, -1], [ex0, ezN, ex0, ezS, -1, 0],
-    ]) {
-      const w = nx ? 0.12 : x1 - x0 + 0.12, d = nz ? 0.12 : z1 - z0 + 0.12;
-      box(w, 0.13, d, (x0 + x1) / 2 + nx * 0.06, gy, (z0 + z1) / 2 + nz * 0.06, charcoal, layer.roofs);
+    for (const z of [ezN - 0.06, ezS + 0.06]) box(rx1 - rx0 + 0.1, 0.13, 0.12, (rx0 + rx1) / 2, gy, z, charcoal, layer.roofs);
+    for (const [x, wz, gz] of [[W0 + 0.3, S0 + 0.04, ezS + 0.06], [W1 - 0.3, S0 + 0.04, ezS + 0.06], [W0 + 0.3, SN - 0.04, ezN - 0.06]]) {
+      box(0.1, gy - 0.35, 0.05, x, (gy - 0.35) / 2, wz, charcoal, layer.world);
+      rod([x, gy - 0.35, wz], [x, gy, gz], 0.04, charcoal, layer.roofs, 6);
     }
-    const downpipe = (wx, wz, gx, gz) => {
-      box(0.1, gy - 0.35, 0.05, wx, (gy - 0.35) / 2, wz, charcoal, layer.world);
-      rod([wx, gy - 0.35, wz], [gx, gy, gz], 0.04, charcoal, layer.roofs, 6);
-    };
-    downpipe(W0 - 0.15, S0 - 0.25, ex0 - 0.05, ezS);
-    downpipe(W1 + 0.15, S0 - 0.25, ex1 + 0.05, ezS);
-    downpipe(W1 + 0.15, N0 + 0.25, ex1 + 0.05, ezM);
-    downpipe(W0 - 0.15, SN + 0.25, ex0 - 0.05, ezN);
-    downpipe(DE - 0.02, 10.4, exD + 0.05, ezN + 0.6);
 
-    // Opening skylights over the kitchen and hall, two whirlybirds.
+    // Opening skylights over the kitchen and hall.
     const skyMat = mat(0x9cc4d8, { roughness: 0.1, metalness: 0.3 });
     for (const [x, z] of [[8.45, 16.8], [12.3, 17.4]]) {
-      const k = activePlane(x, z);
-      const s = box(0.7, 0.08, 0.95, x, roofY(x, z) + 0.06, z, skyMat, layer.roofs, false);
-      if (k.b) s.rotation.x = -k.b * pitch;
-      else s.rotation.z = k.a * pitch;
-    }
-    for (const [wx, wz] of [[15.6, 15.4], [4.6, 19.6]]) {
-      const wy = roofY(wx, wz);
-      rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, layer.roofs, 16);
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), aluminium);
-      dome.position.set(wx, wy + 0.28, wz);
-      layer.roofs.add(dome);
+      const s = box(0.7, 0.08, 0.95, x, roofY(z) + 0.06, z, skyMat, layer.roofs, false);
+      s.rotation.x = z < zr ? -pitch : pitch;
     }
 
-    // Deck under the main roof: timber boards on the old sunroom slab area, lined ceiling, steel posts and beams.
+    // Deck (timber, on the old sunroom slab area) and patio (paved), under one lined ceiling.
+    // A single beam line on steel posts runs along the rear; the east gable sits on a beam over the patio.
     box(DE - SE, FLOOR, N0 - 10.18, (SE + DE) / 2, FLOOR / 2, (10.18 + N0) / 2, deckBoards);
     box(1.8, 0.08, 0.35, 10.0, 0.04, 10.0, deckBoards);
-    const zb = 10.3, xb = DE - 0.06, yb = EAVE_Y - 0.11;
-    box(xb - SE, 0.2, 0.1, (SE + xb) / 2, yb, zb, charcoal);
-    box(0.1, 0.2, N0 - zb, xb, yb, (zb + N0) / 2, charcoal);
-    for (const [x, z] of [[xb, zb], [10.0, zb], [xb, 13.95]]) box(0.09, yb - 0.1, 0.09, x, (yb - 0.1) / 2, z, charcoal);
+    box(W1 - DE, 0.08, N0 - 10.18, (DE + W1) / 2, 0.04, (10.18 + N0) / 2, concrete);
+    const zb = 10.25, xe = W1 - 0.06, yb = EAVE_Y - 0.11;
+    box(W1 - SE, 0.2, 0.1, (SE + W1) / 2, yb, zb, charcoal);
+    box(0.1, 0.2, N0 - zb, xe, yb, (zb + N0) / 2, charcoal);
+    for (const x of [10.0, DE, 15.5, xe]) box(0.09, yb - 0.1, 0.09, x, (yb - 0.1) / 2, zb, charcoal);
+    box(0.09, yb - 0.1, 0.09, xe, (yb - 0.1) / 2, 12.2, charcoal);
+    box(0.1, gy - 0.35, 0.05, xe, (gy - 0.35) / 2, zb - 0.07, charcoal);
+    rod([xe, gy - 0.35, zb - 0.07], [xe, gy, ezN - 0.06], 0.04, charcoal, layer.roofs, 6);
     label("Covered deck", "5.0 × 4.0 m", 10.04, 12.18, FLOOR + 1.5);
+    label("Covered patio", "5.9 × 4.0 m", 15.5, 12.18, FLOOR + 1.5);
   }
 
   // Open carport 5.8 × 6.0 m: freestanding skillion, clear of the house gutter.
@@ -1019,6 +970,7 @@ const schedule = { before: {}, after: {} };
     return roomRow(name, x1 - x0, z1 - z0);
   });
   list.push(roomRow("Covered deck", 5.0, 4.0));
+  list.push(roomRow("Covered patio", 5.9, 4.0));
   list.push(roomRow("Carport (open)", 5.8, 6.0));
   list.push(roomRow("Shed", 3.0, 3.0));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
