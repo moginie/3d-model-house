@@ -811,7 +811,7 @@ const designs = {
     deckLabel: "6.0 × 3.6 m",
     pathZ0: 8.4,
     carportEntry: true,
-    fence: "picket",
+    fence: "slat",
     fitout({ bed, chair, oak, fabric, stone, wallM }) {
       const W0C = 1.04;
       // Ensuite 2.2 × 1.6 m off the master, in the space of the two old robes; Bed 5 steps around it.
@@ -1135,42 +1135,62 @@ function buildAfter(target, d) {
     box(3.15, 0.05, 1.2, 7.58, 0.03, 22.2, concrete);
   }
 
-  // Picket option: white-painted treated pine pickets on two rails, no plinth, post-mounted letterbox.
-  if (d.fence === "picket") {
-    const pickets = [], tips = [];
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1);
-    const picketFence = (x0, z0, x1, z1) => {
+  // Slat option: 1.5 m flat-top fence of white-painted vertical slats in a mixed wide/narrow rhythm, rails and
+  // posts hidden on the inside, slat gates to the sides, letterbox and house number set into the front run.
+  if (d.fence === "slat") {
+    const slats = [], H = 1.5, gap = 0.018, rhythm = [0.09, 0.042, 0.042, 0.09, 0.042, 0.09, 0.042];
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+    // gate: [from, to] distances along the run, drawn with a shadow gap at each edge and a black latch.
+    const slatFence = (x0, z0, x1, z1, { gate = null, face = 1 } = {}) => {
       const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
+      const at = (d, off = 0) => [x0 + ux * d - uz * off, z0 + uz * d + ux * off];
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ux ? 0 : Math.PI / 2);
-      for (let t = 0.07; t < len - 0.05; t += 0.13) {
-        const x = x0 + ux * t, z = z0 + uz * t;
-        pickets.push(m4.clone().compose(new THREE.Vector3(x, 0.47, z), q, one));
-        tips.push(m4.clone().compose(new THREE.Vector3(x, 0.98, z), q, one));
+      for (let t = 0, i = 0; t < len - 0.03; i++) {
+        const w = Math.min(rhythm[i % rhythm.length], len - t), [x, z] = at(t + w / 2);
+        slats.push(m4.clone().compose(v.set(x, 0.05 + H / 2, z), q, sc.set(w, H, 0.019)));
+        t += w + gap;
       }
-      for (const y of [0.22, 0.78]) {
-        box(ux ? len : 0.035, 0.07, ux ? 0.035 : len, (x0 + x1) / 2 - uz * 0.03, y, (z0 + z1) / 2 + ux * 0.03, fenceWhite);
+      const inside = -0.035 * face;
+      for (const y of [0.3, 1.25]) {
+        const [cx, cz] = at(len / 2, inside);
+        box(ux ? len : 0.035, 0.07, ux ? 0.035 : len, cx, y, cz, fenceWhite);
       }
       const n = Math.max(1, Math.round(len / 2.4));
       for (let i = 0; i <= n; i++) {
-        const x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n;
-        box(0.09, 1.05, 0.09, x - uz * 0.06, 0.52, z + ux * 0.06, fenceWhite);
-        box(0.12, 0.03, 0.12, x - uz * 0.06, 1.06, z + ux * 0.06, fenceWhite);
+        const [x, z] = at(len * i / n, inside * 2);
+        box(0.09, H, 0.09, x, H / 2, z, fenceWhite);
+      }
+      if (gate) {
+        for (const g of gate) {
+          const [x, z] = at(g, 0.012 * face);
+          box(ux ? 0.015 : 0.004, H, ux ? 0.004 : 0.015, x, 0.05 + H / 2, z, charcoal);
+        }
+        const [x, z] = at(gate[1] - 0.06, 0.02 * face);
+        box(ux ? 0.04 : 0.03, 0.07, ux ? 0.03 : 0.04, x, 1.0, z, charcoal);
       }
     };
-    picketFence(6.2, LOT_D, LOT_W, LOT_D);
-    picketFence(LOT_W, S0, LOT_W, LOT_D);
-    picketFence(6.2, 27.6, 6.2, LOT_D);
-    picketFence(W1 + 0.1, S0, LOT_W, S0);
-    picketFence(0, S0, W0 - 0.1, S0);
-    const tipGeo = new THREE.ConeGeometry(0.05, 0.07, 4).rotateY(Math.PI / 4).scale(1, 1, 0.28);
-    for (const [geo, list] of [[new THREE.BoxGeometry(0.07, 0.94, 0.02), pickets], [tipGeo, tips]]) {
-      const inst = new THREE.InstancedMesh(geo, fenceWhite, list.length);
-      list.forEach((m, i) => inst.setMatrixAt(i, m));
-      inst.castShadow = inst.receiveShadow = true;
-      layer.world.add(inst);
-    }
-    box(0.08, 1.0, 0.08, 6.7, 0.5, LOT_D + 0.12, fenceWhite);
-    box(0.32, 0.3, 0.4, 6.7, 1.15, LOT_D + 0.12, charcoal);
+    slatFence(6.2, LOT_D, LOT_W, LOT_D);
+    slatFence(LOT_W, S0, LOT_W, LOT_D, { face: -1 });
+    slatFence(6.2, S0, 6.2, LOT_D, { gate: [0.15, 1.05] });
+    slatFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
+    slatFence(0, S0, W0 - 0.1, S0, { gate: [0.1, Math.min(1.3, W0 - 0.2)] });
+    const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), fenceWhite, slats.length);
+    slats.forEach((m, i) => inst.setMatrixAt(i, m));
+    inst.castShadow = inst.receiveShadow = true;
+    layer.world.add(inst);
+    // Letterbox slot panel and house number on the street face, beside the carport.
+    const zf = LOT_D + 0.012;
+    box(0.42, 0.24, 0.03, 7.0, 0.95, zf + 0.015, fenceWhite);
+    box(0.3, 0.012, 0.01, 7.0, 1.0, zf + 0.032, charcoal);
+    const nc = document.createElement("canvas");
+    nc.width = 64; nc.height = 192;
+    const g = nc.getContext("2d");
+    g.fillStyle = "#2a2c2e"; g.font = "500 64px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("2", 32, 54); g.fillText("1", 32, 138);
+    const num = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.24),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(nc), transparent: true }));
+    num.position.set(6.62, 1.28, zf + 0.004);
+    layer.world.add(num);
   } else
 
   // Front fence: slim black aluminium vertical battens on a low rendered plinth, no piers.
@@ -1334,7 +1354,7 @@ schedule.afterC.note = "Option C, internal sizes. Nothing behind the house excep
   "and laundry become Bed 4 (3.9 × 2.8 m) and a combined bathroom with toilet (3.8 × 2.8 m). The old Bed 4 is the " +
   "master (4.0 × 3.4 m) with a 2.2 × 1.6 m ensuite where the two robes were; Bed 5 loses its robe and steps around " +
   "it. The west wall moves out to 1.0 m from the fence. Laundry and store go to a studio by the side path. White " +
-  "timber picket fence; entry is through the carport. The 1.0 m west setback needs a siting variation from council.";
+  "timber slat fence, 1.5 m; entry is through the carport. The 1.0 m west setback needs a siting variation from council.";
 const propertyCommon = [
   tr("Land", "587 m² &nbsp; 20 × 29 m"),
   tr("Lot", "156 RP123045"),
