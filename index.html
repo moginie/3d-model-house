@@ -855,16 +855,16 @@ const designs = {
       box(1.02, 0.04, 0.52, 13.1, FLOOR + 0.87, 16.93, stone);
       box(0.4, 0.4, 0.65, 13.9, FLOOR + 0.2, 14.8, mat(0xf6f6f4, { roughness: 0.3 }));
 
-      // Outdoor dining for 14 on the deck: 4.0 × 1.0 m table on two trestles, six a side and one at each end.
-      box(4.0, 0.05, 1.0, 8.32, FLOOR + 0.73, 12.4, oak);
-      for (const x of [6.72, 9.92]) box(0.08, 0.7, 0.8, x, FLOOR + 0.35, 12.4, frame);
-      for (let i = 0; i < 6; i++) {
-        const x = 6.65 + i * 0.67;
+      // Outdoor dining for 10 on the deck: 2.8 × 1.0 m table on two trestles, four a side and one at each end.
+      box(2.8, 0.05, 1.0, 8.32, FLOOR + 0.73, 12.4, oak);
+      for (const x of [7.32, 9.32]) box(0.08, 0.7, 0.8, x, FLOOR + 0.35, 12.4, frame);
+      for (let i = 0; i < 4; i++) {
+        const x = 7.32 + i * 0.67;
         chair(x, 11.72, 0, 1);
         chair(x, 13.08, 0, -1);
       }
-      chair(5.97, 12.4, 1, 0);
-      chair(10.67, 12.4, -1, 0);
+      chair(6.57, 12.4, 1, 0);
+      chair(10.07, 12.4, -1, 0);
     },
     // Laundry, bathroom and store studio 5.4 × 3.0 m: white weatherboard, 15° corrugated skillion falling towards
     // the house. Glazed slider to the laundry facing the house, solid doors to the bathroom and store.
