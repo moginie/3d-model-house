@@ -754,41 +754,58 @@ useLayer(after);
   box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
   box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
 
-  // One straight gable roof over everything: corrugated, 15° pitch, ridge running the full width east–west,
-  // gable ends on both sides. A single ridge needs a straight rear eave, so the corner beside the deck
-  // (behind the laundry) is covered too and becomes a paved patio.
+  // One straight gable roof: corrugated, 15° pitch, ridge running the full width east–west, gable ends both sides.
+  // The rear slope covers the deck, then steps back to a higher eave along the house wall east of the deck,
+  // leaving the corner behind the laundry open.
   {
     const pitch = THREE.MathUtils.degToRad(15), tp = Math.tan(pitch), eave = 0.45, rake = 0.3, DE = 12.54;
-    const ezN = SN - eave, ezS = S0 + eave, zr = (ezN + ezS) / 2, yr = EAVE_Y + tp * (zr - ezN);
-    const rx0 = W0 - rake, rx1 = W1 + rake;
+    const ezN = SN - eave, ezS = S0 + eave, ezM = N0 - eave, zr = (ezN + ezS) / 2;
     const roofY = (z) => EAVE_Y + tp * Math.min(z - ezN, ezS - z);
+    const yr = roofY(zr), yM = roofY(ezM);
+    const rx0 = W0 - rake, rx1 = W1 + rake, xD = DE + rake, xb = DE - 0.06;
     const up = (z) => Math.abs(z - zr) / Math.cos(pitch);
     sheet([
-      ...quad([rx0, EAVE_Y, ezN], [rx1, EAVE_Y, ezN], [rx1, yr, zr], [rx0, yr, zr]),
+      ...quad([rx0, EAVE_Y, ezN], [xD, EAVE_Y, ezN], [xD, yM, ezM], [rx0, yM, ezM]),
+      ...quad([rx0, yM, ezM], [rx1, yM, ezM], [rx1, yr, zr], [rx0, yr, zr]),
       ...quad([rx0, yr, zr], [rx1, yr, zr], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]),
     ], roofSheet, (x, y, z) => [x, up(z)]);
-    surface(quad([rx0, EAVE_Y, ezN], [rx1, EAVE_Y, ezN], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]), soffit);
+    surface(quad([rx0, EAVE_Y, ezN], [xb, EAVE_Y, ezN], [xb, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]), soffit);
+    surface(quad([xb, EAVE_Y, N0], [rx1, EAVE_Y, N0], [rx1, EAVE_Y, ezS], [xb, EAVE_Y, ezS]), soffit);
+    surface(quad([xb, yM, ezM], [rx1, yM, ezM], [rx1, yM, N0], [xb, yM, N0]), soffit);
     rod([rx0, yr + 0.03, zr], [rx1, yr + 0.03, zr], 0.07, capping);
-    for (const x of [rx0, rx1]) {
-      for (const z of [ezN, ezS]) rod([x, EAVE_Y - 0.02, z], [x, yr + 0.01, zr], 0.05, charcoal);
+    for (const [x, z, y] of [[rx0, ezN, EAVE_Y], [rx0, ezS, EAVE_Y], [rx1, ezM, yM], [rx1, ezS, EAVE_Y]]) {
+      rod([x, y - 0.02, z], [x, yr + 0.01, zr], 0.05, charcoal);
     }
+    rod([xD, EAVE_Y - 0.02, ezN], [xD, yM - 0.02, ezM], 0.05, charcoal);
 
-    // Gable ends: white weatherboard from the wall plate to the roof, with a louvred vent near the apex.
-    for (const [x, out] of [[W0 - 0.005, -1], [W1 + 0.005, 1]]) {
-      const pts = [[SN, EAVE_Y], [S0, EAVE_Y], [S0, roofY(S0)], [zr, yr], [SN, roofY(SN)]].map(([z, y]) => [x, y, z]);
+    const fan = (pts) => {
       const tris = [];
       for (let i = 1; i < pts.length - 1; i++) tris.push(pts[0], pts[i], pts[i + 1]);
-      surface(tris, weatherboard, (px, py, pz) => [pz, py], layer.world);
+      return tris;
+    };
+    const boards = (px, py, pz) => [pz + px, py];
+    // Gable ends: white weatherboard from the wall plate to the roof, with a louvred vent near the apex.
+    for (const [x, out, z0] of [[W0 - 0.005, -1, SN], [W1 + 0.005, 1, N0]]) {
+      const pts = [[z0, EAVE_Y], [S0, EAVE_Y], [S0, roofY(S0)], [zr, yr], [z0, roofY(z0)]].map(([z, y]) => [x, y, z]);
+      surface(fan(pts), weatherboard, boards, layer.world);
       box(0.06, 0.5, 0.9, x + out * 0.03, yr - 0.6, zr, charcoal);
       for (let i = 0; i < 4; i++) box(0.07, 0.03, 0.82, x + out * 0.05, yr - 0.79 + i * 0.12, zr, frame);
     }
+    // Weatherboard where the roof steps: over the deck's east beam and above the wall behind the laundry.
+    surface(fan([[ezN, EAVE_Y], [N0, EAVE_Y], [N0, yM], [ezM, yM]].map(([z, y]) => [xb, y, z])), weatherboard, boards, layer.world);
+    surface(quad([xb, EAVE_Y, N0 - 0.005], [W1, EAVE_Y, N0 - 0.005], [W1, yM, N0 - 0.005], [xb, yM, N0 - 0.005]), weatherboard, boards, layer.world);
 
-    // Gutters on both eaves, downpipes at the four corners.
-    const gy = EAVE_Y - 0.06;
-    for (const z of [ezN - 0.06, ezS + 0.06]) box(rx1 - rx0 + 0.1, 0.13, 0.12, (rx0 + rx1) / 2, gy, z, charcoal, layer.roofs);
-    for (const [x, wz, gz] of [[W0 + 0.3, S0 + 0.04, ezS + 0.06], [W1 - 0.3, S0 + 0.04, ezS + 0.06], [W0 + 0.3, SN - 0.04, ezN - 0.06]]) {
-      box(0.1, gy - 0.35, 0.05, x, (gy - 0.35) / 2, wz, charcoal, layer.world);
-      rod([x, gy - 0.35, wz], [x, gy, gz], 0.04, charcoal, layer.roofs, 6);
+    // Gutters on every eave and downpipes.
+    const gy = EAVE_Y - 0.06, gM = yM - 0.06;
+    box(rx1 - rx0 + 0.1, 0.13, 0.12, (rx0 + rx1) / 2, gy, ezS + 0.06, charcoal, layer.roofs);
+    box(xD - rx0 + 0.05, 0.13, 0.12, (rx0 + xD) / 2, gy, ezN - 0.06, charcoal, layer.roofs);
+    box(rx1 - xD + 0.05, 0.13, 0.12, (xD + rx1) / 2, gM, ezM - 0.06, charcoal, layer.roofs);
+    for (const [x, wz, gz, g] of [
+      [W0 + 0.3, S0 + 0.04, ezS + 0.06, gy], [W1 - 0.3, S0 + 0.04, ezS + 0.06, gy],
+      [W0 + 0.3, SN - 0.04, ezN - 0.06, gy], [W1 - 0.3, N0 - 0.04, ezM - 0.06, gM], [xb, 10.18, ezN - 0.06, gy],
+    ]) {
+      box(0.1, g - 0.35, 0.05, x, (g - 0.35) / 2, wz, charcoal, layer.world);
+      rod([x, g - 0.35, wz], [x, g, gz], 0.04, charcoal, layer.roofs, 6);
     }
 
     // Opening skylights over the kitchen and hall.
@@ -798,20 +815,14 @@ useLayer(after);
       s.rotation.x = z < zr ? -pitch : pitch;
     }
 
-    // Deck (timber, on the old sunroom slab area) and patio (paved), under one lined ceiling.
-    // A single beam line on steel posts runs along the rear; the east gable sits on a beam over the patio.
+    // Deck under the main roof: timber boards on the old sunroom slab area, lined ceiling, steel posts and beams.
     box(DE - SE, FLOOR, N0 - 10.18, (SE + DE) / 2, FLOOR / 2, (10.18 + N0) / 2, deckBoards);
     box(1.8, 0.08, 0.35, 10.0, 0.04, 10.0, deckBoards);
-    box(W1 - DE, 0.08, N0 - 10.18, (DE + W1) / 2, 0.04, (10.18 + N0) / 2, concrete);
-    const zb = 10.25, xe = W1 - 0.06, yb = EAVE_Y - 0.11;
-    box(W1 - SE, 0.2, 0.1, (SE + W1) / 2, yb, zb, charcoal);
-    box(0.1, 0.2, N0 - zb, xe, yb, (zb + N0) / 2, charcoal);
-    for (const x of [10.0, DE, 15.5, xe]) box(0.09, yb - 0.1, 0.09, x, (yb - 0.1) / 2, zb, charcoal);
-    box(0.09, yb - 0.1, 0.09, xe, (yb - 0.1) / 2, 12.2, charcoal);
-    box(0.1, gy - 0.35, 0.05, xe, (gy - 0.35) / 2, zb - 0.07, charcoal);
-    rod([xe, gy - 0.35, zb - 0.07], [xe, gy, ezN - 0.06], 0.04, charcoal, layer.roofs, 6);
+    const zb = 10.3, yb = EAVE_Y - 0.11;
+    box(xb - SE, 0.2, 0.1, (SE + xb) / 2, yb, zb, charcoal);
+    box(0.1, 0.2, N0 - zb, xb, yb, (zb + N0) / 2, charcoal);
+    for (const [x, z] of [[xb, zb], [10.0, zb], [xb, 13.95]]) box(0.09, yb - 0.1, 0.09, x, (yb - 0.1) / 2, z, charcoal);
     label("Covered deck", "5.0 × 4.0 m", 10.04, 12.18, FLOOR + 1.5);
-    label("Covered patio", "5.9 × 4.0 m", 15.5, 12.18, FLOOR + 1.5);
   }
 
   // Open carport 5.8 × 6.0 m: freestanding skillion, clear of the house gutter.
@@ -830,19 +841,8 @@ useLayer(after);
     label("Carport (open)", "5.8 × 6.0 m", 3.1, 24.6, 1.8);
   }
 
-  // Entry portico: its own small gable over the front door, 30° pitch, timber-lined gable end.
+  // Front path and the walk from the carport; the front door sits under the main eave.
   {
-    const x0 = 8.75, x1 = 10.75, xm = 9.75, z0 = 21.45, z1 = 23.2, ye = 2.5;
-    const yr = ye + (xm - x0) * Math.tan(THREE.MathUtils.degToRad(30));
-    sheet([
-      ...quad([x0, ye, z0], [x0, ye, z1], [xm, yr, z1], [xm, yr, z0]),
-      ...quad([x1, ye, z0], [xm, yr, z0], [xm, yr, z1], [x1, ye, z1]),
-    ], roofSheet, (x, y, z) => [z, Math.abs(x - xm)]);
-    surface([[x0 + 0.1, ye, z1 - 0.05], [x1 - 0.1, ye, z1 - 0.05], [xm, yr - 0.06, z1 - 0.05]], doorTimber, (x, y) => [x, y], layer.world);
-    for (const x of [x0, x1]) rod([x, ye - 0.02, z1 + 0.02], [xm, yr + 0.02, z1 + 0.02], 0.04, charcoal);
-    rod([xm, yr + 0.03, z0], [xm, yr + 0.03, z1], 0.05, capping);
-    box(x1 - x0 - 0.2, 0.18, 0.12, xm, ye - 0.1, z1 - 0.08, charcoal);
-    for (const x of [8.9, 10.6]) box(0.12, ye - 0.15, 0.12, x, (ye - 0.15) / 2, z1 - 0.1, charcoal);
     box(1.2, 0.05, 29.75 - S0, 9.75, 0.03, (S0 + 29.75) / 2, concrete);
     box(3.15, 0.05, 1.2, 7.58, 0.03, 22.2, concrete);
   }
@@ -970,7 +970,6 @@ const schedule = { before: {}, after: {} };
     return roomRow(name, x1 - x0, z1 - z0);
   });
   list.push(roomRow("Covered deck", 5.0, 4.0));
-  list.push(roomRow("Covered patio", 5.9, 4.0));
   list.push(roomRow("Carport (open)", 5.8, 6.0));
   list.push(roomRow("Shed", 3.0, 3.0));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
