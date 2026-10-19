@@ -810,7 +810,7 @@ const designs = {
     skylights: [[8.4, 16.0], [12.3, 17.8]],
     deckLabel: "6.0 × 3.6 m",
     pathZ0: 8.4,
-    carportEntry: true,
+    carportEntry: true, frontTall: 6.9,
     fence: "slat",
     fitout({ bed, chair, oak, fabric, stone, wallM }) {
       const W0C = 1.04;
@@ -861,18 +861,18 @@ const designs = {
       box(0.85, 0.4, 1.8, 10.3, FLOOR + 0.2, 12.4, fabric);
       box(0.2, 0.35, 1.8, 10.65, FLOOR + 0.58, 12.4, fabric);
     },
-    // Laundry and store studio 3.8 × 3.0 m: white weatherboard, 15° corrugated skillion falling towards the house,
-    // glazed sliding door to the laundry facing the house, solid door to the store.
+    // Laundry, bathroom and store studio 5.4 × 3.0 m: white weatherboard, 15° corrugated skillion falling towards
+    // the house. Glazed slider to the laundry facing the house, solid doors to the bathroom and store.
     outbuilding({ wallM, roofSheet, stone }) {
-      const x0 = 15.9, x1 = 19.7, z0 = 5.4, z1 = 8.4, h = 2.3, top = FLOOR + h;
+      const x0 = 14.3, x1 = 19.7, z0 = 5.4, z1 = 8.4, h = 2.3, top = FLOOR + h;
       const sw = { t: 0.12, h, material: weatherboard, grilles: false };
       box(x1 - x0, FLOOR, z1 - z0, (x0 + x1) / 2, FLOOR / 2, (z0 + z1) / 2, concrete);
       box(x1 - x0, 0.04, 0.9, (x0 + x1) / 2, 0.02, z1 + 0.45, concrete);
-      wallM("h", z1 - 0.06, x0, x1, { ...sw, out: 1, open: [[16.15, 17.65, "slider"], [18.4, 19.25, "back"]] });
-      wallM("h", z0 + 0.06, x0, x1, { ...sw, out: -1, open: [[16.3, 17.5, "high"]] });
-      wallM("v", x0 + 0.06, z0, z1, { ...sw, out: -1, open: [[6.2, 7.6, "window"]] });
+      wallM("h", z1 - 0.06, x0, x1, { ...sw, out: 1, open: [[14.95, 15.75, "back"], [16.15, 17.65, "slider"], [18.4, 19.25, "back"]] });
+      wallM("h", z0 + 0.06, x0, x1, { ...sw, out: -1, open: [[16.3, 17.5, "high"], [18.6, 19.3, "high"]] });
+      wallM("v", x0 + 0.06, z0, z1, { ...sw, out: -1 });
       wallM("v", x1 - 0.06, z0, z1, { ...sw, out: 1 });
-      wallM("v", 18.05, z0, z1, { h });
+      for (const x of [15.9, 18.05]) wallM("v", x, z0, z1, { h });
       const rz0 = z0 - 0.25, rz1 = z1 + 0.25, yS = top;
       const yAt = (z) => yS + Math.tan(THREE.MathUtils.degToRad(15)) * (rz1 - z), yN = yAt(rz0);
       sheet(quad([x0 - 0.2, yN, rz0], [x1 + 0.1, yN, rz0], [x1 + 0.1, yS, rz1], [x0 - 0.2, yS, rz1]), roofSheet, (x, y, z) => [x, z]);
@@ -881,15 +881,25 @@ const designs = {
       surface(quad([x0, top, z0], [x1, top, z0], [x1, yAt(z0), z0], [x0, yAt(z0), z0]), weatherboard, boards);
       box(x1 - x0 + 0.35, 0.12, 0.12, (x0 + x1) / 2 - 0.05, yS - 0.05, rz1 + 0.04, charcoal, layer.roofs);
       box(0.08, yS - 0.4, 0.05, x1 - 0.15, (yS - 0.4) / 2, z1 + 0.04, charcoal);
-      // Laundry: bench with washer and dryer under, tub; store: shelving.
+      // Laundry: bench with washer and dryer under, tub.
       box(1.95, 0.01, 2.76, 17.0, FLOOR + 0.005, 6.9, wetTile);
       box(1.95, 0.9, 0.6, 17.0, FLOOR + 0.45, 5.82, joinery);
       box(1.97, 0.04, 0.62, 17.0, FLOOR + 0.92, 5.83, stone);
       for (const x of [16.36, 16.98]) box(0.58, 0.82, 0.02, x, FLOOR + 0.43, 6.13, mat(0xf6f6f4, { roughness: 0.4 }));
       box(0.45, 0.02, 0.4, 17.55, FLOOR + 0.95, 5.82, aluminium);
-      box(0.45, 1.8, 2.4, 19.33, FLOOR + 0.9, 6.8, frame);
+      // Bathroom 1.5 × 2.8 m: shower across the north end, vanity on the west wall, toilet on the east wall.
+      const china = mat(0xf6f6f4, { roughness: 0.3 });
+      box(1.5, 0.01, 2.76, 18.87, FLOOR + 0.005, 6.9, wetTile);
+      box(1.5, 2.0, 0.02, 18.87, FLOOR + 1.0, 6.36, mat(0xcfe3ea, { transparent: true, opacity: 0.35 }));
+      box(0.45, 0.85, 0.8, 18.34, FLOOR + 0.43, 7.0, joinery);
+      box(0.47, 0.04, 0.82, 18.34, FLOOR + 0.87, 7.0, stone);
+      box(0.65, 0.4, 0.4, 19.3, FLOOR + 0.2, 7.0, china);
+      box(0.18, 0.8, 0.4, 19.55, FLOOR + 0.4, 7.0, china);
+      // Store: shelving on the west wall.
+      box(0.45, 1.8, 2.4, 14.6, FLOOR + 0.9, 6.8, frame);
+      label("Store", "1.5 × 2.8 m", 15.1, 7.2, FLOOR + 1.7);
       label("Laundry", "2.0 × 2.8 m", 17.0, 7.2, FLOOR + 1.7);
-      label("Store", "1.5 × 2.8 m", 18.85, 7.2, FLOOR + 1.7);
+      label("Bathroom", "1.5 × 2.8 m", 18.87, 7.4, FLOOR + 1.7);
     },
   },
 };
@@ -917,7 +927,7 @@ function buildAfter(target, d) {
 
   // External walls: brick veneer to match, larger windows, no security grilles.
   wallM("h", N0 + c, W0, W1, { ...ext, out: -1, open: d.north });
-  wallM("h", S0 - c, W0, W1, { ...ext, out: 1, open: [[2.8, 4.6, "window"], [5.9, 9.0, "tall"], [9.3, 10.2, "entry"], [11.4, 13.4, "window"], [15.3, 17.3, "window"]] });
+  wallM("h", S0 - c, W0, W1, { ...ext, out: 1, open: [[2.8, 4.6, "window"], [d.frontTall ?? 5.9, 9.0, "tall"], [9.3, 10.2, "entry"], [11.4, 13.4, "window"], [15.3, 17.3, "window"]] });
   wallM("v", W0 + c, N0, S0, { ...ext, out: -1, open: d.west ?? [[15.2, 17.0, "window"], [18.6, 20.4, "window"]] });
   wallM("v", W1 - c, N0, S0, { ...ext, out: 1, open: d.east ?? [[15.0, 16.4, "window"], [17.33, 18.23, "back"]] });
   for (const w of d.wing) wallM(...w);
@@ -1109,22 +1119,31 @@ function buildAfter(target, d) {
     label("Covered deck", d.deckLabel, (DW + DE) / 2, (DN + N0) / 2, FLOOR + 1.5);
   }
 
-  // Open carport 5.8 × 6.0 m: freestanding 15° gable like the house, ridge running towards the street.
+  // Open carport 6.4 × 6.1 m (5.9 m clear between posts): freestanding 15° gable like the house, ridge running
+  // towards the street, two mid-size SUVs (4.7 × 1.85 m) parked nose-in.
   {
-    const x0 = 0.1, x1 = 6.1, z0 = 22.35, z1 = 27.9, xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
+    const x0 = 0.1, x1 = 6.5, z0 = 22.35, z1 = 28.45, xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
     const yE = 2.62, yR = yE + Math.tan(THREE.MathUtils.degToRad(15)) * (xc - x0);
-    box(5.8, 0.05, 6.0, 3.1, 0.025, 24.6, concrete);
-    box(5.8, 0.05, 33.2 - 27.6, 3.1, 0.0, (27.6 + 33.2) / 2, concrete);
+    box(x1 - x0, 0.05, z1 - z0, xc, 0.025, zc, concrete);
+    box(x1 - x0, 0.05, 33.2 - z1, xc, 0.0, (z1 + 33.2) / 2, concrete);
     sheet([...quad([x0, yE, z0], [xc, yR, z0], [xc, yR, z1], [x0, yE, z1]), ...quad([xc, yR, z0], [x1, yE, z0], [x1, yE, z1], [xc, yR, z1])],
       roofSheet, (x, y, z) => [z, Math.abs(x - xc)]);
     rod([xc, yR + 0.03, z0], [xc, yR + 0.03, z1], 0.06, capping);
     for (const z of [z0, z1]) for (const x of [x0, x1]) rod([x, yE - 0.02, z], [xc, yR, z], 0.05, charcoal);
     for (const x of [x0, x1]) box(0.12, 0.13, z1 - z0, x, yE - 0.06, zc, charcoal, layer.roofs);
-    for (const x of [0.3, 5.9]) {
-      for (const z of [22.6, 25.2, 27.7]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
-      box(0.1, 0.22, 5.3, x, 2.5, 25.15, charcoal);
+    for (const x of [0.3, 6.3]) {
+      for (const z of [22.6, 25.4, 28.2]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
+      box(0.1, 0.22, 5.7, x, 2.5, 25.4, charcoal);
     }
-    label("Carport (open)", "5.8 × 6.0 m", 3.1, 24.6, 1.8);
+    const tyre = mat(0x1c1c1e, { roughness: 0.9 }), glass = mat(0x2b3640, { roughness: 0.15, metalness: 0.4 });
+    for (const [x, paint] of [[1.9, mat(0xd9dbdd, { roughness: 0.3, metalness: 0.5 })], [4.7, mat(0x34506e, { roughness: 0.3, metalness: 0.5 })]]) {
+      const z = 25.25;
+      box(1.85, 0.7, 4.7, x, 0.62, z, paint);
+      box(1.68, 0.55, 2.7, x, 1.24, z + 0.2, glass);
+      box(1.6, 0.05, 2.5, x, 1.54, z + 0.2, paint);
+      for (const dz of [-1.42, 1.42]) rod([x - 0.95, 0.36, z + dz], [x + 0.95, 0.36, z + dz], 0.36, tyre, layer.world, 16);
+    }
+    label("Carport (open)", "6.4 × 6.1 m", xc, zc, 2.2);
   }
 
   // Front path and the walk from the carport; the front door sits under the main eave.
@@ -1169,9 +1188,9 @@ function buildAfter(target, d) {
         box(ux ? 0.04 : 0.03, 0.07, ux ? 0.03 : 0.04, x, 1.0, z, charcoal);
       }
     };
-    slatFence(6.2, LOT_D, LOT_W, LOT_D);
+    slatFence(6.6, LOT_D, LOT_W, LOT_D);
     slatFence(LOT_W, S0, LOT_W, LOT_D, { face: -1 });
-    slatFence(6.2, S0, 6.2, LOT_D, { gate: [0.15, 1.05] });
+    slatFence(6.6, S0, 6.6, LOT_D, { gate: [0.15, 1.05] });
     slatFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
     slatFence(0, S0, W0 - 0.1, S0, { gate: [0.1, Math.min(1.3, W0 - 0.2)] });
     const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), fenceWhite, slats.length);
@@ -1180,8 +1199,8 @@ function buildAfter(target, d) {
     layer.world.add(inst);
     // Letterbox slot panel and house number on the street face, beside the carport.
     const zf = LOT_D + 0.012;
-    box(0.42, 0.24, 0.03, 7.0, 0.95, zf + 0.015, fenceWhite);
-    box(0.3, 0.012, 0.01, 7.0, 1.0, zf + 0.032, charcoal);
+    box(0.42, 0.24, 0.03, 7.4, 0.95, zf + 0.015, fenceWhite);
+    box(0.3, 0.012, 0.01, 7.4, 1.0, zf + 0.032, charcoal);
     const nc = document.createElement("canvas");
     nc.width = 64; nc.height = 192;
     const g = nc.getContext("2d");
@@ -1189,7 +1208,7 @@ function buildAfter(target, d) {
     g.fillText("2", 32, 54); g.fillText("1", 32, 138);
     const num = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.24),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(nc), transparent: true }));
-    num.position.set(6.62, 1.28, zf + 0.004);
+    num.position.set(7.02, 1.28, zf + 0.004);
     layer.world.add(num);
   } else
 
@@ -1228,9 +1247,9 @@ function buildAfter(target, d) {
         run(gate[0], gate[1], 0.04, 1.48, 0.05, black);
       }
     };
-    battenFence(6.2, LOT_D, LOT_W, LOT_D, { skip: [[1.55, 2.95]], gate: [3.05, 4.05] });
+    battenFence(6.6, LOT_D, LOT_W, LOT_D, { skip: [[1.15, 2.55]], gate: [2.65, 3.65] });
     battenFence(LOT_W, S0, LOT_W, LOT_D);
-    battenFence(6.2, 27.6, 6.2, LOT_D);
+    battenFence(6.6, 27.6, 6.6, LOT_D);
     battenFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
     battenFence(0, S0, W0 - 0.1, S0, { gate: [0.1, Math.min(1.3, W0 - 0.2)] });
     const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.065, 1.15, 0.016), black, battens.length);
@@ -1243,7 +1262,7 @@ function buildAfter(target, d) {
     box(0.5, 0.36, 0.02, 8.15, 1.15, LOT_D + 0.16, doorTimber);
     box(0.34, 0.05, 0.03, 8.85, 1.2, LOT_D + 0.16, black);
     // Low hedge inside the fence, either side of the path.
-    for (const [a, b] of [[6.4, 7.6], [10.5, 19.8]]) box(b - a, 0.6, 0.5, (a + b) / 2, 0.3, LOT_D - 0.45, hedge);
+    for (const [a, b] of [[6.8, 7.6], [10.5, 19.8]]) box(b - a, 0.6, 0.5, (a + b) / 2, 0.3, LOT_D - 0.45, hedge);
     box(0.5, 0.6, LOT_D - S0 - 1.2, LOT_W - 0.45, 0.3, (S0 + 0.3 + LOT_D - 0.9) / 2, hedge);
   }
 
@@ -1320,7 +1339,7 @@ for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
   { key: "afterB", deck: [6.0, 3.6], foot: "16.9 × 7.4 m + rear wing 9.05 × 3.6 m", enclosed: 16.9 * 7.42 + 9.05 * 3.6,
     yard: "14.2 m (10.6 to rear wing)", sides: "W 1.5 m, E 1.6 m", outb: ["Shed", 3.0, 3.0], bb: "5 / 2 + WC / 2" },
   { key: "afterC", deck: [6.0, 3.6], foot: "17.4 × 7.4 m, no rear rooms", enclosed: 17.4 * 7.42,
-    yard: "14.2 m (10.6 to deck)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry studio", 3.8, 3.0], bb: "5 / 2 / 2" },
+    yard: "14.2 m (10.6 to deck)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry, bath & store studio", 5.4, 3.0], bb: "5 / 3 / 2" },
 ]) {
   let total = 0;
   const list = designs[key].rooms.map(([name, x0, z0, x1, z1, , lShape]) => {
@@ -1330,7 +1349,7 @@ for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
   });
   for (const r of designs[key].extraRows ?? []) list.push(roomRow(...r));
   list.push(roomRow("Covered deck", ...deck));
-  list.push(roomRow("Carport (open)", 5.8, 6.0));
+  list.push(roomRow("Carport (open)", 6.4, 6.1));
   list.push(roomRow(...outb));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
   schedule[key].rooms = list;
@@ -1353,7 +1372,7 @@ schedule.afterB.note = "Option B, internal sizes. Changes from A: master suite a
 schedule.afterC.note = "Option C, internal sizes. Nothing behind the house except the covered deck. The old WC, linen " +
   "and laundry become Bed 4 (3.9 × 2.8 m) and a combined bathroom with toilet (3.8 × 2.8 m). The old Bed 4 is the " +
   "master (4.0 × 3.4 m) with a 2.2 × 1.6 m ensuite where the two robes were; Bed 5 loses its robe and steps around " +
-  "it. The west wall moves out to 1.0 m from the fence. Laundry and store go to a studio by the side path. White " +
+  "it. The west wall moves out to 1.0 m from the fence. Laundry, a second bathroom (shower, toilet, basin) and the store go to a studio by the side path. White " +
   "timber slat fence, 1.5 m; entry is through the carport. The 1.0 m west setback needs a siting variation from council.";
 const propertyCommon = [
   tr("Land", "587 m² &nbsp; 20 × 29 m"),
