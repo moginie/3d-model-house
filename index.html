@@ -1109,20 +1109,20 @@ function buildAfter(target, d) {
     label("Covered deck", d.deckLabel, (DW + DE) / 2, (DN + N0) / 2, FLOOR + 1.5);
   }
 
-  // Open carport 5.8 × 6.0 m: freestanding 15° skillion, low next to the house gutter, high to the street.
+  // Open carport 5.8 × 6.0 m: freestanding 15° gable like the house, ridge running towards the street.
   {
-    const x0 = 0.1, x1 = 6.1, z0 = 22.35, z1 = 27.9, pitch = THREE.MathUtils.degToRad(15);
-    const yAt = (z) => 2.62 + Math.tan(pitch) * (z - z0), yLo = yAt(z0), yHi = yAt(z1), zc = (z0 + z1) / 2;
-    const slope = (m) => { m.rotation.x = -pitch; return m; };
+    const x0 = 0.1, x1 = 6.1, z0 = 22.35, z1 = 27.9, xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
+    const yE = 2.62, yR = yE + Math.tan(THREE.MathUtils.degToRad(15)) * (xc - x0);
     box(5.8, 0.05, 6.0, 3.1, 0.025, 24.6, concrete);
     box(5.8, 0.05, 33.2 - 27.6, 3.1, 0.0, (27.6 + 33.2) / 2, concrete);
-    sheet(quad([x0, yLo, z0], [x1, yLo, z0], [x1, yHi, z1], [x0, yHi, z1]), roofSheet, (x, y, z) => [x, z]);
-    box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yLo - 0.06, z0, charcoal, layer.roofs);
-    box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yHi - 0.06, z1, charcoal, layer.roofs);
-    for (const x of [x0, x1]) slope(box(0.06, 0.16, (z1 - z0) / Math.cos(pitch), x, yAt(zc) - 0.06, zc, charcoal, layer.roofs));
+    sheet([...quad([x0, yE, z0], [xc, yR, z0], [xc, yR, z1], [x0, yE, z1]), ...quad([xc, yR, z0], [x1, yE, z0], [x1, yE, z1], [xc, yR, z1])],
+      roofSheet, (x, y, z) => [z, Math.abs(x - xc)]);
+    rod([xc, yR + 0.03, z0], [xc, yR + 0.03, z1], 0.06, capping);
+    for (const z of [z0, z1]) for (const x of [x0, x1]) rod([x, yE - 0.02, z], [xc, yR, z], 0.05, charcoal);
+    for (const x of [x0, x1]) box(0.12, 0.13, z1 - z0, x, yE - 0.06, zc, charcoal, layer.roofs);
     for (const x of [0.3, 5.9]) {
-      for (const z of [22.6, 25.2, 27.7]) box(0.1, yAt(z) - 0.12, 0.1, x, (yAt(z) - 0.12) / 2, z, charcoal);
-      slope(box(0.1, 0.22, 5.3 / Math.cos(pitch), x, yAt(25.15) - 0.12, 25.15, charcoal));
+      for (const z of [22.6, 25.2, 27.7]) box(0.1, 2.5, 0.1, x, 1.25, z, charcoal);
+      box(0.1, 0.22, 5.3, x, 2.5, 25.15, charcoal);
     }
     label("Carport (open)", "5.8 × 6.0 m", 3.1, 24.6, 1.8);
   }
