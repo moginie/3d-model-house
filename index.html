@@ -1231,7 +1231,9 @@ function buildAfter(target, d) {
       }
     };
     slatFence(6.6, LOT_D, LOT_W, LOT_D);
-    slatFence(LOT_W, S0, LOT_W, LOT_D, { face: -1 });
+    // Side boundaries stay grey Colorbond right through to the front fence line.
+    colorbondFence(0, Z(1405), 0, LOT_D);
+    colorbondFence(LOT_W, HOUSE_SOUTH, LOT_W, LOT_D);
     slatFence(6.6, S0, 6.6, LOT_D, { gate: [0.15, 1.05] });
     slatFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
     slatFence(0, S0, W0 - 0.1, S0, { gate: [0.1, Math.min(1.3, W0 - 0.2)] });
