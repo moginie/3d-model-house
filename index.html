@@ -311,15 +311,28 @@ const renoItems = {
     { item: "Turf repair and garden beds", qty: 1, unit: "lump", rate: 4500 },
   ],
 };
-// D: C's scope in the original shell, so no west wall rebuild or siting variation and less roof, ceiling and floor.
+// D: C's scope in the original shell, so no west wall rebuild or siting variation and less roof, ceiling and floor;
+// the carport and front fence stay, and there is no studio or stepping-stone path.
+const dDropped = [
+  "Rebuild west wall 0.5 m out (slab, brick veneer)",
+  "Studio shell 5.4 × 3.0 m: slab, frame, cladding, roof",
+  "Studio bathroom and laundry fit-out, sewer connection",
+  "Carport 6.4 × 6.1 m gable with slab",
+  "White slat fence 1.5 m",
+  "Gates, letterbox, house number",
+  "Colorbond side fences to the front line",
+  "Stepping-stone path",
+];
 const dChanges = {
+  "Sunroom, old shed, carport, porch and front fence": { item: "Sunroom, old shed and porch", rate: 6500 },
+  "Driveway and walk concrete": { item: "Walk concrete", qty: 8 },
   "Design, engineering, certifier, council siting variation": { item: "Design, engineering, certifier", rate: 11000 },
   "New 15° gable roof: trusses, Colorbond, sarking, gutters": { qty: 140 },
   "Flat ceilings and insulation": { qty: 80 },
   "Engineered timber flooring": { qty: 90 },
 };
 renoItems.afterD = renoItems.afterC
-  .filter((r) => r.item !== "Rebuild west wall 0.5 m out (slab, brick veneer)")
+  .filter((r) => !dDropped.includes(r.item))
   .map((r) => ({ ...r, ...dChanges[r.item] }));
 
 // Box UVs in world metres so tiled textures keep a constant scale.
@@ -569,10 +582,11 @@ wall("v", 1243, 545, 672, { ...sunWall });
   box(0.08, yLo - 0.1, 0.06, x1 - 0.1, (yLo - 0.1) / 2, zo - 0.1, charcoal, layer.roofs);
 }
 
-// ---------- Double carport 5.7 × 5.7 m: plan x 273–781, y 1417–1926 ----------
-box(M(508), 0.04, M(509), X(527), 0.02, Z(1671), concrete);
-label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
-{
+// ---------- Double carport 5.7 × 5.7 m: plan x 273–781, y 1417–1926, with its driveway ----------
+function oldCarport() {
+  box(X(781) - X(273), 0.05, LOT_D + 4.2 - Z(1926), (X(273) + X(781)) / 2, 0.0, (Z(1926) + LOT_D + 4.2) / 2, concrete);
+  box(M(508), 0.04, M(509), X(527), 0.02, Z(1671), concrete);
+  label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
   const px0 = X(285), px1 = X(769), pz0 = Z(1430), pz1 = Z(1914);
   const eave = 2.4, rise = 0.8;
   for (const x of [px0, px1]) {
@@ -599,6 +613,7 @@ label("Double carport", "5.7 × 5.7 m", X(527), Z(1671), 1.8);
   box(0.1, 0.12, z1 - z0, x0, yb - 0.05, (z0 + z1) / 2, charcoal, layer.roofs);
   box(0.1, 0.12, z1 - z0, x1, yb - 0.05, (z0 + z1) / 2, charcoal, layer.roofs);
 }
+oldCarport();
 
 // ---------- Shed 3.0 × 3.0 m: plan x 1683–1967, y 192–476, double doors on the west ----------
 // dx, dy shift the shed in plan pixels.
@@ -700,8 +715,7 @@ colorbondFence(LOT_W, 0, LOT_W, HOUSE_SOUTH);
 
 // Existing driveway and white welded-mesh front fence: along the street, down the east boundary, and along the driveway to the porch.
 useLayer(before);
-box(X(781) - X(273), 0.05, LOT_D + 4.2 - Z(1926), (X(273) + X(781)) / 2, 0.0, (Z(1926) + LOT_D + 4.2) / 2, concrete);
-const wireMatrices = [];
+let wireMatrices = [];
 function meshFence(x0, z0, x1, z1, { h = 1.2, gate = null } = {}) {
   const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
   const at = (d) => [x0 + ux * d, z0 + uz * d];
@@ -731,18 +745,20 @@ function meshFence(x0, z0, x1, z1, { h = 1.2, gate = null } = {}) {
   }
 }
 const drivewayEdge = X(781) + 0.1;
-meshFence(drivewayEdge, LOT_D, LOT_W, LOT_D);
-meshFence(LOT_W, HOUSE_SOUTH, LOT_W, LOT_D);
-meshFence(drivewayEdge, Z(1413), drivewayEdge, LOT_D, { gate: [1.2, 2.1] });
-{
+function oldFence() {
+  wireMatrices = [];
+  meshFence(drivewayEdge, LOT_D, LOT_W, LOT_D);
+  meshFence(LOT_W, HOUSE_SOUTH, LOT_W, LOT_D);
+  meshFence(drivewayEdge, Z(1413), drivewayEdge, LOT_D, { gate: [1.2, 2.1] });
   const wires = new THREE.InstancedMesh(new THREE.BoxGeometry(0.008, 1.12, 0.008), fenceWhite, wireMatrices.length);
   wireMatrices.forEach((m, i) => wires.setMatrixAt(i, m));
   wires.castShadow = true;
   layer.world.add(wires);
+  // Letterbox on the fence corner at the driveway.
+  box(0.07, 1.0, 0.07, drivewayEdge, 0.5, LOT_D - 0.3, fenceWhite);
+  box(0.32, 0.36, 0.42, drivewayEdge, 1.15, LOT_D - 0.3, charcoal);
 }
-// Letterbox on the fence corner at the driveway.
-box(0.07, 1.0, 0.07, drivewayEdge, 0.5, LOT_D - 0.3, fenceWhite);
-box(0.32, 0.36, 0.42, drivewayEdge, 1.15, LOT_D - 0.3, charcoal);
+oldFence();
 
 // ---------- Renovation (After A and After B): proposed designs ----------
 // Both keep the widened main block x 1.54–18.44, z 14.18–21.60 and the same west and east wings.
@@ -979,8 +995,8 @@ const designs = {
     },
   },
 };
-// D: Option C's layout inside the original 15.7 × 7.4 m shell (west and east walls stay put), with C's roof,
-// deck, studio, carport, fences and garden.
+// D: Option C's layout inside the original 15.7 × 7.4 m shell (west and east walls stay put), with C's roof and
+// deck, the existing carport and mesh fence, and open lawn where C's studio sits.
 designs.afterD = {
   ...designs.afterC,
   W0: 2.04, W1: 17.73, wingE: 2.04,
@@ -1000,6 +1016,8 @@ designs.afterD = {
   hallDoors: [[11.5, 12.3, "door"], [16.0, 16.8, "door"]],
   eastSplits: [13.89], southSplit: 13.74, robesX: [13.39, 17.21], bed3X: 13.79,
   westSplitFrom: 4.05,
+  carport: "original", fence: "mesh", outbuilding: false,
+  garden: { trees: designs.afterC.garden.trees },
   fit: { w0: 2.04, w1: 17.73, ensE: 4.05, bathE: 13.84, masterBed: [3.35, 14.43, 0, 1, 1.53, 2.03, [1]], masterRobe: [1.5, 15.18] },
 };
 
@@ -1268,8 +1286,11 @@ function buildAfter(target, d) {
   }
 
   // Open carport 6.4 × 6.1 m (5.9 m clear between posts): freestanding 15° gable like the house, ridge running
-  // towards the street, two mid-size SUVs (4.7 × 1.85 m) parked nose-in.
-  {
+  // towards the street, two mid-size SUVs (4.7 × 1.85 m) parked nose-in. Or keep the existing carport.
+  if (d.carport === "original") {
+    oldCarport();
+    box(1.2, 0.05, 2.4, drivewayEdge + 0.62, 0.03, 23.0, concrete);
+  } else {
     const x0 = 0.1, x1 = 6.5, z0 = 22.35, z1 = 28.45, xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
     const yE = 2.62, yR = yE + Math.tan(THREE.MathUtils.degToRad(15)) * (xc - x0);
     box(x1 - x0, 0.05, z1 - z0, xc, 0.025, zc, concrete);
@@ -1360,7 +1381,8 @@ function buildAfter(target, d) {
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(nc), transparent: true }));
     num.position.set(7.02, 1.28, zf + 0.004);
     layer.world.add(num);
-  } else
+  } else if (d.fence === "mesh") oldFence();
+  else
 
   // Front fence: slim black aluminium vertical battens on a low rendered plinth, no piers.
   // A rendered letterbox wall sits beside the pedestrian gate; a low hedge lines the inside.
@@ -1429,7 +1451,7 @@ function buildAfter(target, d) {
   box(1.45, 0.04, S0 - pathZ0, 19.22, 0.02, (pathZ0 + S0) / 2, concrete);
 
   // Garden: stepping-stone path through the lawn from the deck to the studio, small trees along the back boundary.
-  if (d.garden) {
+  if (d.garden?.path) {
     const paver = mat(0xd3cbb9, { roughness: 0.95 });
     const [p0, p1, p2] = d.garden.path;
     const at = (t) => [0, 1].map((i) => (1 - t) ** 2 * p0[i] + 2 * (1 - t) * t * p1[i] + t * t * p2[i]);
@@ -1441,6 +1463,8 @@ function buildAfter(target, d) {
       run = 0;
       box(0.45, 0.03, 0.9, bx, 0.015, bz, paver).rotation.y = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
     }
+  }
+  if (d.garden) {
     const leaf = [mat(0x4b6a38, { roughness: 0.95 }), mat(0x5f7d40, { roughness: 0.95 }), mat(0x3f5c33, { roughness: 0.95 })];
     const bark = mat(0x6b5642, { roughness: 1 });
     const crown = new THREE.IcosahedronGeometry(1, 1);
@@ -1458,7 +1482,7 @@ function buildAfter(target, d) {
 
   // Shed moved to the rear north-east corner, or the design's own outbuilding.
   if (d.outbuilding) d.outbuilding({ wallM, roofSheet, stone });
-  else shed(142.8, -826.9);
+  else if (d.outbuilding !== false) shed(142.8, -826.9);
 }
 buildAfter(after, designs.after);
 buildAfter(afterB, designs.afterB);
@@ -1512,7 +1536,7 @@ const schedule = { before: {}, after: {}, afterB: {}, afterC: {}, afterD: {} };
     tr("Side setbacks", `W ${fmt(X(446))} m, E ${fmt(LOT_W - X(1913))} m`),
   ];
 }
-for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
+for (const { key, deck, foot, enclosed, yard, sides, outb, carport = ["Carport (open)", 6.4, 6.1], bb } of [
   { key: "after", deck: [5.0, 4.0], foot: "16.9 × 7.4 m + suite 6.0 × 4.4 m", enclosed: 16.9 * 7.42 + 6.0 * 4.4,
     yard: "14.2 m (9.8 to suite)", sides: "W 1.5 m, E 1.6 m", outb: ["Shed", 3.0, 3.0], bb: "5 / 2 + WC / 2" },
   { key: "afterB", deck: [6.0, 3.6], foot: "16.9 × 7.4 m + rear wing 9.05 × 3.6 m", enclosed: 16.9 * 7.42 + 9.05 * 3.6,
@@ -1520,7 +1544,7 @@ for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
   { key: "afterC", deck: [6.0, 3.6], foot: "17.4 × 7.4 m, no rear rooms", enclosed: 17.4 * 7.42,
     yard: "14.2 m (10.6 to deck)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry, bath & store studio", 5.4, 3.0], bb: "5 / 3 / 2" },
   { key: "afterD", deck: [6.0, 3.6], foot: "15.7 × 7.4 m (original), no rear rooms", enclosed: 15.69 * 7.42,
-    yard: "14.2 m (10.6 to deck)", sides: "W 2.0 m, E 2.3 m", outb: ["Laundry, bath & store studio", 5.4, 3.0], bb: "5 / 3 / 2" },
+    yard: "14.2 m (10.6 to deck)", sides: "W 2.0 m, E 2.3 m", outb: null, carport: ["Carport (double)", 5.7, 5.7], bb: "5 / 2 / 2" },
 ]) {
   let total = 0;
   const list = designs[key].rooms.map(([name, x0, z0, x1, z1, , lShape]) => {
@@ -1530,8 +1554,8 @@ for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
   });
   for (const r of designs[key].extraRows ?? []) list.push(roomRow(...r));
   list.push(roomRow("Covered deck", ...deck));
-  list.push(roomRow("Carport (open)", 6.4, 6.1));
-  list.push(roomRow(...outb));
+  list.push(roomRow(...carport));
+  if (outb) list.push(roomRow(...outb));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
   schedule[key].rooms = list;
   schedule[key].property = [
@@ -1559,7 +1583,8 @@ schedule.afterC.note = "Option C, internal sizes. Nothing behind the house excep
 schedule.afterD.note = "Option D, internal sizes. Option C's layout inside the original 15.7 × 7.4 m house: the west and " +
   "east walls stay where they are, so no wall rebuild and no siting variation. The west rooms are 3.0 m wide instead of 4.0 m " +
   "(master bed turned to the north wall, 1.7 × 1.6 m ensuite), the bathroom is 3.4 × 2.8 m and Bed 2 is 3.25 m wide. " +
-  "Roof, deck, studio, carport, fences and garden as in C.";
+  "Roof and deck as in C. The existing carport and white mesh fence stay; no studio, so the back yard is open lawn " +
+  "and there is no separate laundry.";
 const propertyCommon = [
   tr("Land", "587 m² &nbsp; 20 × 29 m"),
   tr("Lot", "156 RP123045"),
