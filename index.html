@@ -774,16 +774,21 @@ useLayer(after);
     bed(10.44, 19.95, 1, 0, 1.53, 2.03, [-1]);
     bed(14.39, 19.85, 1, 0);
 
-    // Dining for six beside the island.
-    box(1.8, 0.04, 0.9, 7.6, FLOOR + 0.74, 18.25, oak);
-    for (const [x, z] of [[6.85, 17.95], [6.85, 18.55], [8.35, 17.95], [8.35, 18.55]]) box(0.06, 0.72, 0.06, x, FLOOR + 0.36, z, oak);
-    for (const x of [6.95, 7.6, 8.25]) {
-      for (const s of [-1, 1]) {
-        box(0.45, 0.05, 0.45, x, FLOOR + 0.45, 18.25 + s * 0.65, fabric);
-        box(0.45, 0.45, 0.05, x, FLOOR + 0.7, 18.25 + s * 0.86, fabric);
-        box(0.42, 0.43, 0.42, x, FLOOR + 0.21, 18.25 + s * 0.65, frame);
-      }
+    // Dining for six in front of the island, parallel to it. Chair at (x, z) faces (fx, fz).
+    const chair = (x, z, fx, fz) => {
+      box(0.42, 0.43, 0.42, x, FLOOR + 0.21, z, frame);
+      box(0.45, 0.05, 0.45, x, FLOOR + 0.45, z, fabric);
+      box(fx ? 0.05 : 0.45, 0.45, fx ? 0.45 : 0.05, x - fx * 0.21, FLOOR + 0.7, z - fz * 0.21, fabric);
+    };
+    const dx = 6.6, dz = 16.05;
+    box(0.9, 0.04, 1.8, dx, FLOOR + 0.74, dz, oak);
+    for (const [x, z] of [[dx - 0.35, dz - 0.8], [dx + 0.35, dz - 0.8], [dx - 0.35, dz + 0.8], [dx + 0.35, dz + 0.8]]) box(0.06, 0.72, 0.06, x, FLOOR + 0.36, z, oak);
+    for (const z of [dz - 0.42, dz + 0.42]) {
+      chair(dx - 0.65, z, 1, 0);
+      chair(dx + 0.65, z, -1, 0);
     }
+    chair(dx, dz - 1.15, 0, 1);
+    chair(dx, dz + 1.15, 0, -1);
 
     // Lounge: three-seat sofa facing a TV unit on the west wall, coffee table, rug.
     box(0.95, 0.42, 2.1, 8.55, FLOOR + 0.21, 20.2, fabric);
