@@ -14,6 +14,11 @@
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
     #panel h1 { font-size: 16px; margin: 0 0 2px; font-weight: 650; }
+    .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    #menu-hide { flex: none; padding: 3px 8px; }
+    #menu-show { position: fixed; top: 16px; left: 16px; display: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); padding: 8px 12px; }
+    body.menu-hidden #panel { display: none; }
+    body.menu-hidden #menu-show { display: block; }
     #panel p { margin: 0 0 10px; color: #c8c2b6; font-size: 12px; line-height: 1.4; }
     .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     button {
@@ -37,8 +42,12 @@
   </style>
 </head>
 <body>
+  <button id="menu-show" title="Show menu (M)">☰ Menu</button>
   <div id="panel">
-    <h1>21 Merino Street, Harristown</h1>
+    <div class="head">
+      <h1>21 Merino Street, Harristown</h1>
+      <button id="menu-hide" title="Hide menu (M)">Hide</button>
+    </div>
     <p>Layout from the 2025 floor plan. Position on the block, roofs and finishes from the satellite view and listing photos.</p>
     <div class="row">
       <button id="cam-front" class="active">Front</button>
@@ -149,6 +158,14 @@ const ribTex = tex(256, 64, (g, w, h) => {
     g.fillStyle = "#e3e3e3"; g.fillRect(i * p + p * 0.08, 0, p * 0.1, h);
   }
 }, 0.95, 0.25, false);
+// Corrugated sheet: 10 corrugations at 76 mm pitch, shaded as a sine wave across the sheet.
+const corrTex = tex(320, 8, (g, w, h) => {
+  for (let x = 0; x < w; x++) {
+    const l = Math.round(196 + 52 * Math.sin((x / w) * Math.PI * 20));
+    g.fillStyle = `rgb(${l},${l},${l})`;
+    g.fillRect(x, 0, 1, h);
+  }
+}, 0.76, 1, false);
 const boardTex = tex(64, 384, (g, w, h) => {
   const n = 6, bh = h / n;
   for (let i = 0; i < n; i++) {
@@ -541,7 +558,7 @@ function shed(dx = 0, dy = 0) {
 shed();
 
 // ---------- Main hip roof: charcoal concrete tiles, 22.5° ----------
-// wx0..wx1, wz0..wz1 are the outer faces of the walls in metres. Returns the roof height at (x, z).
+// wx0..wx1, wz0..wz1 are the outer faces of the walls in metres.
 const PITCH = THREE.MathUtils.degToRad(22.5);
 function hipRoof(wx0, wx1, wz0, wz1) {
   const eave = 0.45, pitch = PITCH;
@@ -578,7 +595,6 @@ function hipRoof(wx0, wx1, wz0, wz1) {
   downpipe(wx1 + 0.15, wz0 + 0.25, wx1 + 0.4, z0 - 0.05);
   downpipe(wx0 - 0.15, wz0 + 0.25, wx0 - 0.4, z0 - 0.05);
 
-  const heightAt = (x, z) => yb + Math.min(z - z0, z1 - z, x - x0, x1 - x) * Math.tan(pitch);
   // Vent pipe and whirlybird.
   {
     const d = 2.4, y = yb + d * Math.tan(pitch);
@@ -592,7 +608,6 @@ function hipRoof(wx0, wx1, wz0, wz1) {
     dome.position.set(wx, wy + 0.28, wz);
     layer.roofs.add(dome);
   }
-  return heightAt;
 }
 hipRoof(X(446), X(1912), Z(672), Z(1366));
 
@@ -687,7 +702,7 @@ useLayer(after);
     wall(axis, K(k), A(a), A(b), { grilles: false, ...o, open: (o.open || []).map(([s, e, kind]) => [A(s), A(e), kind]) });
   };
   const ext = { t: EXT_T };
-  const roofSheet = mat(0x45494d, { map: ribTex, roughness: 0.5, metalness: 0.25, side: THREE.FrontSide });
+  const roofSheet = mat(0x8d9090, { map: corrTex, roughness: 0.45, metalness: 0.35, side: THREE.FrontSide });
   const deckBoards = mat(0xa8744a, { map: boardTex, roughness: 0.8 });
   const render = mat(0xe9e4da, { roughness: 0.95 });
   const slat = mat(0x8a5a36, { roughness: 0.6 });
@@ -740,46 +755,119 @@ useLayer(after);
   box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
   box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
 
-  // Main hip roof over the widened house, with opening skylights and two whirlybirds.
-  const roofY = hipRoof(W0, W1, N0, S0);
-  const skyMat = mat(0x9cc4d8, { roughness: 0.1, metalness: 0.3 });
-  for (const [x, z] of [[8.45, 15.8], [12.3, 17.4]]) {
-    const s = box(0.7, 0.08, 0.95, x, roofY(x, z) + 0.06, z, skyMat, layer.roofs, false);
-    s.rotation.x = -PITCH;
-  }
+  // One corrugated hip roof over the house, master suite and deck: 15° pitch, every eave at the same height.
+  // Roof height is the pitch times the distance to the nearest eave. At the inside corner where the deck meets
+  // the main block the two adjoining slopes form a valley, so that pair takes the higher of the two.
   {
-    const wx = 15.6, wz = 15.4, wy = roofY(wx, wz);
-    rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, layer.roofs, 16);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), aluminium);
-    dome.position.set(wx, wy + 0.28, wz);
-    layer.roofs.add(dome);
-  }
+    const pitch = THREE.MathUtils.degToRad(15), tp = Math.tan(pitch), eave = 0.45, DE = 12.54;
+    const ex0 = W0 - eave, ex1 = W1 + eave, ezS = S0 + eave, ezN = SN - eave, ezM = N0 - eave, exD = DE + eave;
+    const plane = (a, b, c) => ({ a, b, v: ([x, z]) => a * x + b * z + c });
+    const north = plane(0, 1, -ezN), south = plane(0, -1, ezS), west = plane(1, 0, -ex0), east = plane(-1, 0, ex1);
+    const deckEast = plane(-1, 0, exD), mainNorth = plane(0, 1, -ezM);
+    const convex = [north, south, west, east];
+    const valley = (p) => (deckEast.v(p) >= mainNorth.v(p) ? deckEast : mainNorth);
+    const activePlane = (x, z) => [...convex, valley([x, z])].reduce((m, k) => (k.v([x, z]) < m.v([x, z]) ? k : m));
+    const roofY = (x, z) => EAVE_Y + tp * activePlane(x, z).v([x, z]);
 
-  // Rear suite and deck share one skillion roof that sits over the main gutter.
-  {
-    const x0 = W0 - 0.3, x1 = 12.84, zh = 14.1, zo = SN - 0.3, yHi = 2.9, yLo = 2.62;
-    const yAt = (z) => yLo + ((z - zo) / (zh - zo)) * (yHi - yLo);
-    sheet(quad([x0, yHi, zh], [x1, yHi, zh], [x1, yLo, zo], [x0, yLo, zo]), roofSheet, (x, y, z) => [x, z]);
-    box(x1 - x0, 0.14, 0.12, (x0 + x1) / 2, yLo - 0.05, zo - 0.06, charcoal, layer.roofs);
-    box(0.06, 0.2, zh - zo, x1, (yLo + yHi) / 2 - 0.08, (zo + zh) / 2, charcoal, layer.roofs);
-    box(0.06, 0.2, zh - zo, x0, (yLo + yHi) / 2 - 0.08, (zo + zh) / 2, charcoal, layer.roofs);
-    for (const x of [W0, SE]) {
-      surface(quad([x, EAVE_Y, SN], [x, EAVE_Y, N0], [x, yAt(N0), N0], [x, yAt(SN), SN]), weatherboard, (px, py, pz) => [pz, py], layer.world);
+    // Keep the part of a convex polygon where f <= 0.
+    const clip = (poly, f) => {
+      const out = [];
+      poly.forEach((p, i) => {
+        const q = poly[(i + 1) % poly.length], fp = f(p), fq = f(q);
+        if (fp <= 0) out.push(p);
+        if ((fp < 0 && fq > 0) || (fp > 0 && fq < 0)) {
+          const t = fp / (fp - fq);
+          out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+        }
+      });
+      return out;
+    };
+    const area = (poly) => Math.abs(poly.reduce((s, p, i) => {
+      const q = poly[(i + 1) % poly.length];
+      return s + p[0] * q[1] - q[0] * p[1];
+    }, 0)) / 2;
+
+    const rects = [[ex0, ezM, ex1, ezS], [ex0, ezN, exD, ezM]];
+    const creases = new Map();
+    for (const [x0, z0, x1, z1] of rects) {
+      surface(quad([x0, EAVE_Y, z0], [x1, EAVE_Y, z0], [x1, EAVE_Y, z1], [x0, EAVE_Y, z1]), soffit);
+      for (const [sel, other] of [[deckEast, mainNorth], [mainNorth, deckEast]]) {
+        const active = [...convex, sel];
+        for (const k of active) {
+          let poly = clip([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], (p) => other.v(p) - sel.v(p));
+          for (const j of active) if (j !== k) poly = clip(poly, (p) => k.v(p) - j.v(p));
+          if (poly.length < 3 || area(poly) < 1e-4) continue;
+          const pts = poly.map(([x, z]) => [x, EAVE_Y + tp * k.v([x, z]), z]);
+          const tris = [];
+          for (let i = 1; i < pts.length - 1; i++) tris.push(pts[0], pts[i], pts[i + 1]);
+          sheet(tris, roofSheet, (x, y, z) => [-k.b * x + k.a * z, (k.a * x + k.b * z) / Math.cos(pitch)]);
+          pts.forEach((p, i) => {
+            const q = pts[(i + 1) % pts.length];
+            const key = [p, q].map(([x, , z]) => `${x.toFixed(2)},${z.toFixed(2)}`).sort().join("|");
+            creases.set(key, [p, q]);
+          });
+        }
+      }
     }
-    // Deck: timber boards on the old sunroom slab area, steel posts and beam.
-    box(12.54 - SE, FLOOR, N0 - 10.18, (SE + 12.54) / 2, FLOOR / 2, (10.18 + N0) / 2, deckBoards);
+    // Ridges and hips get capping, valleys a valley gutter. Seams between coplanar pieces are skipped.
+    for (const [p, q] of creases.values()) {
+      const len = Math.hypot(q[0] - p[0], q[2] - p[2]);
+      if (len < 0.05 || (p[1] - EAVE_Y < 0.01 && q[1] - EAVE_Y < 0.01)) continue;
+      const mx = (p[0] + q[0]) / 2, mz = (p[2] + q[2]) / 2, nx = -(q[2] - p[2]) / len * 0.15, nz = (q[0] - p[0]) / len * 0.15;
+      const bend = roofY(mx + nx, mz + nz) + roofY(mx - nx, mz - nz) - 2 * roofY(mx, mz);
+      if (bend < -0.005) rod([p[0], p[1] + 0.03, p[2]], [q[0], q[1] + 0.03, q[2]], 0.07, capping);
+      else if (bend > 0.005) rod([p[0], p[1] + 0.01, p[2]], [q[0], q[1] + 0.01, q[2]], 0.05, charcoal);
+    }
+
+    // Quad gutters on every eave and downpipes at the corners.
+    const gy = EAVE_Y - 0.06;
+    for (const [x0, z0, x1, z1, nx, nz] of [
+      [ex0, ezS, ex1, ezS, 0, 1], [ex1, ezM, ex1, ezS, 1, 0], [exD, ezM, ex1, ezM, 0, -1],
+      [exD, ezN, exD, ezM, 1, 0], [ex0, ezN, exD, ezN, 0, -1], [ex0, ezN, ex0, ezS, -1, 0],
+    ]) {
+      const w = nx ? 0.12 : x1 - x0 + 0.12, d = nz ? 0.12 : z1 - z0 + 0.12;
+      box(w, 0.13, d, (x0 + x1) / 2 + nx * 0.06, gy, (z0 + z1) / 2 + nz * 0.06, charcoal, layer.roofs);
+    }
+    const downpipe = (wx, wz, gx, gz) => {
+      box(0.1, gy - 0.35, 0.05, wx, (gy - 0.35) / 2, wz, charcoal, layer.world);
+      rod([wx, gy - 0.35, wz], [gx, gy, gz], 0.04, charcoal, layer.roofs, 6);
+    };
+    downpipe(W0 - 0.15, S0 - 0.25, ex0 - 0.05, ezS);
+    downpipe(W1 + 0.15, S0 - 0.25, ex1 + 0.05, ezS);
+    downpipe(W1 + 0.15, N0 + 0.25, ex1 + 0.05, ezM);
+    downpipe(W0 - 0.15, SN + 0.25, ex0 - 0.05, ezN);
+    downpipe(DE - 0.02, 10.4, exD + 0.05, ezN + 0.6);
+
+    // Opening skylights over the kitchen and hall, two whirlybirds.
+    const skyMat = mat(0x9cc4d8, { roughness: 0.1, metalness: 0.3 });
+    for (const [x, z] of [[8.45, 16.8], [12.3, 17.4]]) {
+      const k = activePlane(x, z);
+      const s = box(0.7, 0.08, 0.95, x, roofY(x, z) + 0.06, z, skyMat, layer.roofs, false);
+      if (k.b) s.rotation.x = -k.b * pitch;
+      else s.rotation.z = k.a * pitch;
+    }
+    for (const [wx, wz] of [[15.6, 15.4], [4.6, 19.6]]) {
+      const wy = roofY(wx, wz);
+      rod([wx, wy, wz], [wx, wy + 0.28, wz], 0.13, aluminium, layer.roofs, 16);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), aluminium);
+      dome.position.set(wx, wy + 0.28, wz);
+      layer.roofs.add(dome);
+    }
+
+    // Deck under the main roof: timber boards on the old sunroom slab area, lined ceiling, steel posts and beams.
+    box(DE - SE, FLOOR, N0 - 10.18, (SE + DE) / 2, FLOOR / 2, (10.18 + N0) / 2, deckBoards);
     box(1.8, 0.08, 0.35, 10.0, 0.04, 10.0, deckBoards);
-    const zb = 10.3, yb = yAt(zb) - 0.04;
-    box(12.6 - SE, 0.2, 0.1, (SE + 12.6) / 2, yb - 0.1, zb, charcoal);
-    for (const [x, z] of [[12.48, zb], [10.0, zb], [12.48, 13.9]]) box(0.09, yb - 0.2, 0.09, x, (yb - 0.2) / 2, z, charcoal);
-    box(0.1, 0.2, N0 - zb, 12.48, yAt(12) - 0.14, (zb + N0) / 2, charcoal);
+    const zb = 10.3, xb = DE - 0.06, yb = EAVE_Y - 0.11;
+    box(xb - SE, 0.2, 0.1, (SE + xb) / 2, yb, zb, charcoal);
+    box(0.1, 0.2, N0 - zb, xb, yb, (zb + N0) / 2, charcoal);
+    for (const [x, z] of [[xb, zb], [10.0, zb], [xb, 13.95]]) box(0.09, yb - 0.1, 0.09, x, (yb - 0.1) / 2, z, charcoal);
     label("Covered deck", "5.0 × 4.0 m", 10.04, 12.18, FLOOR + 1.5);
   }
 
   // Open carport 5.8 × 6.0 m with a flat charcoal roof, plus a covered walk to the front portico.
   {
     const flat = (x0, x1, z0, z1, yHi, yLo) => {
-      sheet(quad([x0, yHi, z0], [x1, yHi, z0], [x1, yLo, z1], [x0, yLo, z1]), roofSheet, (x, y, z) => [z, x]);
+      sheet(quad([x0, yHi, z0], [x1, yHi, z0], [x1, yLo, z1], [x0, yLo, z1]), roofSheet, (x, y, z) => [x, z]);
       box(x1 - x0, 0.16, 0.06, (x0 + x1) / 2, yLo - 0.06, z1, charcoal, layer.roofs);
       for (const x of [x0, x1]) box(0.06, 0.16, z1 - z0, x, (yHi + yLo) / 2 - 0.06, (z0 + z1) / 2, charcoal, layer.roofs);
     };
@@ -984,6 +1072,10 @@ function toggle(id, group, on, off) {
     btn.classList.toggle("active", group.visible);
   };
 }
+const toggleMenu = () => document.body.classList.toggle("menu-hidden");
+document.getElementById("menu-hide").onclick = toggleMenu;
+document.getElementById("menu-show").onclick = toggleMenu;
+addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "m" && !e.metaKey && !e.ctrlKey) toggleMenu(); });
 toggle("toggle-roof", roofs, "Roof on", "Roof off");
 toggle("toggle-labels", labels, "Labels on", "Labels off");
 
