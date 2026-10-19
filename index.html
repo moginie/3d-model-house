@@ -62,6 +62,7 @@
       <button id="phase-before" class="active">Before</button>
       <button id="phase-after">After A</button>
       <button id="phase-afterB">After B</button>
+      <button id="phase-afterC">After C</button>
     </div>
     <div id="reno" hidden>
       <h2>Renovation cost</h2>
@@ -250,8 +251,8 @@ scene.add(world, roofs, labels);
 // Labels toggles still apply. Helpers add to whichever layer is current.
 const phaseLayer = () => ({ world: new THREE.Group(), roofs: new THREE.Group(), labels: new THREE.Group() });
 const shared = { world, roofs, labels };
-const before = phaseLayer(), after = phaseLayer(), afterB = phaseLayer();
-for (const p of [before, after, afterB]) { world.add(p.world); roofs.add(p.roofs); labels.add(p.labels); }
+const before = phaseLayer(), after = phaseLayer(), afterB = phaseLayer(), afterC = phaseLayer();
+for (const p of [before, after, afterB, afterC]) { world.add(p.world); roofs.add(p.roofs); labels.add(p.labels); }
 const layer = { ...before };
 const useLayer = (l) => Object.assign(layer, l);
 const renoItems = []; // { item, qty, unit, rate } in AUD incl. GST
@@ -704,6 +705,7 @@ const designs = {
       ...commonRooms,
     ],
     SN: 9.78, wingE: 7.54, deck: [7.54, 12.54, 10.18],
+    rear: [{ to: 12.48, z: 9.78 }, { to: W1, z: N0 }],
     north: [[6.4, 7.2, "door"], [7.6, 10.3, "slider"], [11.0, 12.6, "high"], [13.5, 14.1, "high"], [16.2, 17.8, "window"]],
     wing: [
       ["h", 9.78 + c, W0, 7.54, { t: EXT_T, out: -1, open: [[4.0, 6.4, "tall"]] }],
@@ -715,7 +717,8 @@ const designs = {
     islandX: 8.45,
     skylights: [[8.45, 16.8], [12.3, 17.4]],
     deckLabel: "5.0 × 4.0 m",
-    fitout({ bed, chair, oak, fabric }) {
+    fitout({ bed, chair, oak, fabric, standard }) {
+      standard();
       box(0.5, 2.0, 1.6, 2.04, FLOOR + 1.0, 13.3, joinery);
       bed(3.89, 11.3, 1, 0);
       const dx = 6.6, dz = 16.05;
@@ -741,6 +744,7 @@ const designs = {
       ...commonRooms,
     ],
     SN: 10.58, wingE: 10.59, deck: [10.59, 16.59, 10.58],
+    rear: [{ to: 16.53, z: 10.58 }, { to: W1, z: N0 }],
     north: [[5.55, 6.35, "door"], [6.8, 10.1, "open"], [11.0, 12.6, "high"], [13.5, 14.1, "high"], [16.2, 17.8, "high"]],
     wing: [
       ["h", 10.58 + c, W0, 10.59, { t: EXT_T, out: -1, open: [[4.1, 5.9, "high"], [7.0, 9.9, "tall"]] }],
@@ -752,7 +756,8 @@ const designs = {
     islandX: 8.19,
     skylights: [[8.2, 16.2], [12.3, 17.8]],
     deckLabel: "6.0 × 3.6 m",
-    fitout({ bed, chair, oak, fabric, stone }) {
+    fitout({ bed, chair, oak, fabric, stone, standard }) {
+      standard();
       box(1.9, 2.2, 0.6, 4.44, FLOOR + 1.1, 13.88, joinery);
       box(0.5, 0.85, 1.1, 2.04, FLOOR + 0.43, 12.75, joinery);
       box(0.52, 0.04, 1.12, 2.04, FLOOR + 0.87, 12.75, stone);
@@ -775,11 +780,106 @@ const designs = {
       box(0.2, 0.35, 1.8, 16.05, FLOOR + 0.58, 12.4, fabric);
     },
   },
+  // C: B with the WC, linen and laundry turned into Bed 4. Old Bed 4 becomes the master: the west wall moves
+  // out to 1.0 m from the fence and a walk-through robe and small ensuite sit behind it. The laundry moves to
+  // a weatherboard laundry and store studio in the yard.
+  afterC: {
+    W0: 1.04,
+    rooms: [
+      ["Master", 1.29, 14.43, 5.27, 17.83, "bed"],
+      ["WIR", 1.29, 12.28, 3.79, 14.18, "bed"],
+      ["Ensuite", 3.89, 12.28, 6.43, 14.18, "wet"],
+      ["Dining", 6.65, 10.83, 10.34, 14.18, "live"],
+      ["Bed 5", 1.29, 17.93, 5.27, 21.35, "bed"],
+      ["Kitchen · Living", 5.37, 14.43, 10.34, 21.35, "live"],
+      ["Bath", 10.44, 14.43, 13.14, 17.18, "wet"],
+      ["Bed 4", 13.24, 14.43, 18.19, 17.18, "bed"],
+      ["Hall", 10.44, 17.28, 18.19, 18.28, "bed"],
+      ["Bed 2", 10.44, 18.38, 14.29, 21.35, "bed"],
+      ["Bed 3", 14.39, 18.38, 18.19, 21.35, "bed"],
+    ],
+    SN: 10.58, wingE: 10.59, deck: [10.59, 15.59, 10.58],
+    rear: [{ to: 6.43, z: 12.03 }, { to: 15.53, z: 10.58 }, { to: W1, z: N0 }],
+    wingSlabs: [[1.04, 12.03, 6.54, N0], [6.43, 10.58, 10.59, N0]],
+    north: [[2.2, 3.0, "door"], [6.8, 10.1, "open"], [11.0, 12.6, "high"], [13.8, 15.0, "high"], [16.0, 17.6, "window"]],
+    east: [[17.33, 18.23, "back"], [19.0, 20.8, "window"]],
+    hallDoors: [[11.5, 12.3, "door"], [16.0, 16.8, "door"]],
+    eastSplits: [13.19],
+    wing: [
+      ["h", 12.03 + c, 1.04, 6.43, { t: EXT_T, out: -1, open: [[4.4, 5.6, "high"]] }],
+      ["v", 1.04 + c, 12.03, N0, { t: EXT_T, out: -1 }],
+      ["v", 6.54, 10.58, N0, { t: EXT_T, out: -1, open: [[10.95, 11.85, "window"]] }],
+      ["h", 10.58 + c, 6.43, 10.59, { t: EXT_T, out: -1, open: [[7.0, 9.9, "tall"]] }],
+      ["v", 10.59 - c, 10.58, N0, { t: EXT_T, out: 1, open: [[11.1, 13.9, "slider"]] }],
+      ["v", 3.84, 12.03, N0, { open: [[12.6, 13.4, "door"]] }],
+    ],
+    islandX: 8.19,
+    skylights: [[8.2, 16.2], [12.3, 17.8]],
+    deckLabel: "5.0 × 3.6 m",
+    pathZ0: 8.4,
+    fitout({ bed, chair, oak, fabric, stone }) {
+      bed(1.29, 16.0, 1, 0);
+      box(2.0, 2.2, 0.6, 2.29, FLOOR + 1.1, 12.58, joinery);
+      box(0.6, 2.2, 1.2, 1.59, FLOOR + 1.1, 13.5, joinery);
+      box(1.1, 0.85, 0.5, 4.55, FLOOR + 0.43, 12.53, joinery);
+      box(1.12, 0.04, 0.52, 4.55, FLOOR + 0.87, 12.53, stone);
+      box(0.02, 2.0, 1.0, 5.43, FLOOR + 1.0, 12.8, mat(0xcfe3ea, { transparent: true, opacity: 0.35 }));
+      bed(13.24, 15.8, 1, 0);
+      box(0.6, 2.2, 2.0, 17.89, FLOOR + 1.1, 15.6, joinery);
+      box(0.5, 2.0, 0.6, 12.86, FLOOR + 1.0, 16.85, joinery);
+      for (const z of [15.45, 16.2, 16.95]) {
+        box(0.36, 0.05, 0.36, 7.4, FLOOR + 0.66, z, fabric);
+        box(0.06, 0.64, 0.06, 7.4, FLOOR + 0.32, z, frame);
+      }
+      const dx = 8.47, dz = 12.45;
+      box(1.8, 0.04, 0.9, dx, FLOOR + 0.74, dz, oak);
+      for (const x of [dx - 0.62, dx, dx + 0.62]) {
+        chair(x, dz - 0.65, 0, 1);
+        chair(x, dz + 0.65, 0, -1);
+      }
+      box(1.6, 0.04, 0.9, 12.6, FLOOR + 0.72, 12.4, oak);
+      box(0.08, 0.7, 0.7, 12.6, FLOOR + 0.35, 12.4, frame);
+      for (const x of [12.05, 12.6, 13.15]) for (const z of [11.75, 13.05]) box(0.45, 0.45, 0.45, x, FLOOR + 0.22, z, frame);
+      box(0.85, 0.4, 1.8, 14.75, FLOOR + 0.2, 12.4, fabric);
+      box(0.2, 0.35, 1.8, 15.1, FLOOR + 0.58, 12.4, fabric);
+    },
+    // Laundry and store studio 3.8 × 3.0 m: white weatherboard, corrugated skillion falling to the north,
+    // glazed sliding door to the laundry facing the house, solid door to the store.
+    outbuilding({ wallM, roofSheet, stone }) {
+      const x0 = 15.9, x1 = 19.7, z0 = 5.4, z1 = 8.4, h = 2.3, top = FLOOR + h;
+      const sw = { t: 0.12, h, material: weatherboard, grilles: false };
+      box(x1 - x0, FLOOR, z1 - z0, (x0 + x1) / 2, FLOOR / 2, (z0 + z1) / 2, concrete);
+      box(x1 - x0, 0.04, 0.9, (x0 + x1) / 2, 0.02, z1 + 0.45, concrete);
+      wallM("h", z1 - 0.06, x0, x1, { ...sw, out: 1, open: [[16.15, 17.65, "slider"], [18.4, 19.25, "back"]] });
+      wallM("h", z0 + 0.06, x0, x1, { ...sw, out: -1, open: [[16.3, 17.5, "high"]] });
+      wallM("v", x0 + 0.06, z0, z1, { ...sw, out: -1, open: [[6.2, 7.6, "window"]] });
+      wallM("v", x1 - 0.06, z0, z1, { ...sw, out: 1 });
+      wallM("v", 18.05, z0, z1, { h });
+      const yN = top, yS = top + 0.35, rz0 = z0 - 0.25, rz1 = z1 + 0.25;
+      const yAt = (z) => yN + (yS - yN) * (z - rz0) / (rz1 - rz0);
+      sheet(quad([x0 - 0.2, yN, rz0], [x1 + 0.1, yN, rz0], [x1 + 0.1, yS, rz1], [x0 - 0.2, yS, rz1]), roofSheet, (x, y, z) => [x, z]);
+      const boards = (px, py, pz) => [pz + px, py];
+      for (const x of [x0, x1]) surface(quad([x, top, z0], [x, top, z1], [x, yAt(z1), z1], [x, yAt(z0), z0]), weatherboard, boards);
+      surface(quad([x0, top, z1], [x1, top, z1], [x1, yAt(z1), z1], [x0, yAt(z1), z1]), weatherboard, boards);
+      box(x1 - x0 + 0.35, 0.12, 0.12, (x0 + x1) / 2 - 0.05, yN - 0.05, rz0 - 0.04, charcoal, layer.roofs);
+      box(0.08, yN - 0.4, 0.05, x1 - 0.15, (yN - 0.4) / 2, z0 - 0.04, charcoal);
+      // Laundry: bench with washer and dryer under, tub; store: shelving.
+      box(1.95, 0.01, 2.76, 17.0, FLOOR + 0.005, 6.9, wetTile);
+      box(1.95, 0.9, 0.6, 17.0, FLOOR + 0.45, 5.82, joinery);
+      box(1.97, 0.04, 0.62, 17.0, FLOOR + 0.92, 5.83, stone);
+      for (const x of [16.36, 16.98]) box(0.58, 0.82, 0.02, x, FLOOR + 0.43, 6.13, mat(0xf6f6f4, { roughness: 0.4 }));
+      box(0.45, 0.02, 0.4, 17.55, FLOOR + 0.95, 5.82, aluminium);
+      box(0.45, 1.8, 2.4, 19.33, FLOOR + 0.9, 6.8, frame);
+      label("Laundry", "2.0 × 2.8 m", 17.0, 7.2, FLOOR + 1.7);
+      label("Store", "1.5 × 2.8 m", 18.85, 7.2, FLOOR + 1.7);
+    },
+  },
 };
 
 function buildAfter(target, d) {
   useLayer(target);
   const { SN, wingE } = d;
+  const W0 = d.W0 ?? 1.54;
   const PX = (x) => x * S + LOT_X0, PY = (z) => z * S + LOT_Y0;
   const wallM = (axis, k, a, b, o = {}) => {
     const [K, A] = axis === "h" ? [PY, PX] : [PX, PY];
@@ -793,24 +893,24 @@ function buildAfter(target, d) {
 
   // Slabs.
   box(W1 - W0, FLOOR, S0 - N0, (W0 + W1) / 2, FLOOR / 2, (N0 + S0) / 2, concrete);
-  box(wingE - W0, FLOOR, N0 - SN, (W0 + wingE) / 2, FLOOR / 2, (SN + N0) / 2, concrete);
+  for (const [x0, z0, x1, z1] of d.wingSlabs ?? [[W0, SN, wingE, N0]]) {
+    box(x1 - x0, FLOOR, z1 - z0, (x0 + x1) / 2, FLOOR / 2, (z0 + z1) / 2, concrete);
+  }
 
   // External walls: brick veneer to match, larger windows, no security grilles.
   wallM("h", N0 + c, W0, W1, { ...ext, out: -1, open: d.north });
   wallM("h", S0 - c, W0, W1, { ...ext, out: 1, open: [[2.8, 4.6, "window"], [5.9, 9.0, "tall"], [9.3, 10.2, "entry"], [11.4, 13.4, "window"], [15.3, 17.3, "window"]] });
   wallM("v", W0 + c, N0, S0, { ...ext, out: -1, open: [[15.2, 17.0, "window"], [18.6, 20.4, "window"]] });
-  wallM("v", W1 - c, N0, S0, { ...ext, out: 1, open: [[15.0, 16.4, "window"], [17.33, 18.23, "back"], [19.0, 20.8, "window"]] });
+  wallM("v", W1 - c, N0, S0, { ...ext, out: 1, open: d.east ?? [[15.0, 16.4, "window"], [17.33, 18.23, "back"], [19.0, 20.8, "window"]] });
   for (const w of d.wing) wallM(...w);
 
   // Internal walls. The two walls either side of the living area stay where they are.
   wallM("v", 5.32, N0, S0, { open: [[16.8, 17.6, "door"], [18.2, 19.0, "door"]] });
   wallM("h", 17.88, W0, 5.32);
   wallM("v", 10.40, N0, S0, { open: [[17.28, 18.28, "open"]] });
-  wallM("h", 17.23, 10.40, W1, { open: [[11.5, 12.3, "door"], [13.4, 14.2, "door"], [14.6, 15.6, "door"], [16.6, 17.4, "door"]] });
+  wallM("h", 17.23, 10.40, W1, { open: d.hallDoors ?? [[11.5, 12.3, "door"], [13.4, 14.2, "door"], [14.6, 15.6, "door"], [16.6, 17.4, "door"]] });
   wallM("h", 18.33, 10.40, W1, { open: [[11.0, 11.8, "door"], [14.8, 15.6, "door"]] });
-  wallM("v", 13.19, N0, 17.23);
-  wallM("v", 14.44, N0, 17.23);
-  wallM("v", 15.74, N0, 17.23);
+  for (const x of d.eastSplits ?? [13.19, 14.44, 15.74]) wallM("v", x, N0, 17.23);
   wallM("v", 14.34, 18.33, S0);
 
   // Floors and labels.
@@ -827,10 +927,9 @@ function buildAfter(target, d) {
   box(0.62, 0.04, 1.77, 10.03, FLOOR + 0.92, 16.22, stone);
   box(0.9, 0.9, 2.2, d.islandX, FLOOR + 0.45, 16.1, joinery);
   box(1.0, 0.04, 2.3, d.islandX, FLOOR + 0.92, 16.1, stone);
-  for (const [x, z, w] of [[13.2, 18.68, 2.0], [17.1, 18.68, 2.0], [2.7, 17.53, 1.8], [2.7, 18.23, 1.8]]) {
+  for (const [x, z, w] of [[13.2, 18.68, 2.0], [17.1, 18.68, 2.0], [2.7, 18.23, 1.8]]) {
     box(w, 2.2, 0.6, x, FLOOR + 1.1, z, joinery);
   }
-  box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
   box(1.7, 0.55, 0.75, 11.29, FLOOR + 0.28, 14.81, frame);
 
   // Minimal furniture at real sizes, for a sense of scale.
@@ -853,8 +952,7 @@ function buildAfter(target, d) {
       box(0.45, 0.05, 0.45, x, FLOOR + 0.45, z, fabric);
       box(fx ? 0.05 : 0.45, 0.45, fx ? 0.45 : 0.05, x - fx * 0.21, FLOOR + 0.7, z - fz * 0.21, fabric);
     };
-    bed(3.3, 14.43, 0, 1);
-    bed(1.79, 19.9, 1, 0);
+    bed(W0 + 0.25, 19.9, 1, 0);
     bed(10.44, 19.95, 1, 0, 1.53, 2.03, [-1]);
     bed(14.39, 19.85, 1, 0);
 
@@ -867,60 +965,88 @@ function buildAfter(target, d) {
     box(0.45, 0.5, 1.8, 5.6, FLOOR + 0.25, 20.2, joinery);
     box(0.05, 0.75, 1.3, 5.6, FLOOR + 1.05, 20.2, frame);
 
-    d.fitout({ bed, chair, oak, fabric, stone });
+    // Bed 4 and laundry as in the widened existing layout.
+    const standard = () => {
+      bed(3.3, 14.43, 0, 1);
+      box(1.8, 2.2, 0.6, 2.7, FLOOR + 1.1, 17.53, joinery);
+      box(2.4, 0.9, 0.6, 16.99, FLOOR + 0.45, 14.73, joinery);
+    };
+    d.fitout({ bed, chair, oak, fabric, stone, standard });
   }
 
   // One straight gable roof: corrugated, 15° pitch, ridge running the full width east–west, gable ends both sides.
-  // The rear slope covers the rear wing and deck, then steps back to a higher eave along the house wall
-  // east of the deck, leaving that corner open.
+  // The rear eave follows the back of the house in steps (d.rear: wall lines from west to east). Where a part
+  // sits further south its eave is higher on the same roof plane, and weatherboard fills the step.
   {
     const [DW, DE, DN] = d.deck;
     const pitch = THREE.MathUtils.degToRad(15), tp = Math.tan(pitch), eave = 0.45, rake = 0.3;
-    const ezN = SN - eave, ezS = S0 + eave, ezM = N0 - eave, zr = (ezN + ezS) / 2;
+    const zLow = Math.min(...d.rear.map((r) => r.z));
+    const ezN = zLow - eave, ezS = S0 + eave, zr = (ezN + ezS) / 2;
     const roofY = (z) => EAVE_Y + tp * Math.min(z - ezN, ezS - z);
-    const yr = roofY(zr), yM = roofY(ezM);
-    const rx0 = W0 - rake, rx1 = W1 + rake, xD = DE + rake, xb = DE - 0.06;
+    const yr = roofY(zr);
+    const rx0 = W0 - rake, rx1 = W1 + rake, xb = DE - 0.06;
     const up = (z) => Math.abs(z - zr) / Math.cos(pitch);
-    sheet([
-      ...quad([rx0, EAVE_Y, ezN], [xD, EAVE_Y, ezN], [xD, yM, ezM], [rx0, yM, ezM]),
-      ...quad([rx0, yM, ezM], [rx1, yM, ezM], [rx1, yr, zr], [rx0, yr, zr]),
-      ...quad([rx0, yr, zr], [rx1, yr, zr], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]),
-    ], roofSheet, (x, y, z) => [x, up(z)]);
-    surface(quad([rx0, EAVE_Y, ezN], [xb, EAVE_Y, ezN], [xb, EAVE_Y, ezS], [rx0, EAVE_Y, ezS]), soffit);
-    surface(quad([xb, EAVE_Y, N0], [rx1, EAVE_Y, N0], [rx1, EAVE_Y, ezS], [xb, EAVE_Y, ezS]), soffit);
-    surface(quad([xb, yM, ezM], [rx1, yM, ezM], [rx1, yM, N0], [xb, yM, N0]), soffit);
+    let from = rx0;
+    const regs = d.rear.map(({ to, z }) => {
+      const r = { w0: from, w1: to, zw: z, ez: z - eave };
+      from = to;
+      return r;
+    });
+    regs.at(-1).w1 = rx1;
+    regs.forEach((r) => { r.r0 = r.w0; r.r1 = r.w1; r.y = roofY(r.ez); });
+    for (let i = 0; i < regs.length - 1; i++) {
+      const a = regs[i], b = regs[i + 1];
+      a.r1 = b.r0 = a.w1 + (a.zw < b.zw ? 0.36 : -0.36);
+    }
+
+    const tris = [...quad([rx0, yr, zr], [rx1, yr, zr], [rx1, EAVE_Y, ezS], [rx0, EAVE_Y, ezS])];
+    for (const r of regs) tris.push(...quad([r.r0, r.y, r.ez], [r.r1, r.y, r.ez], [r.r1, yr, zr], [r.r0, yr, zr]));
+    sheet(tris, roofSheet, (x, y, z) => [x, up(z)]);
     rod([rx0, yr + 0.03, zr], [rx1, yr + 0.03, zr], 0.07, capping);
-    for (const [x, z, y] of [[rx0, ezN, EAVE_Y], [rx0, ezS, EAVE_Y], [rx1, ezM, yM], [rx1, ezS, EAVE_Y]]) {
+    for (const [x, z, y] of [[rx0, regs[0].ez, regs[0].y], [rx0, ezS, EAVE_Y], [rx1, regs.at(-1).ez, regs.at(-1).y], [rx1, ezS, EAVE_Y]]) {
       rod([x, y - 0.02, z], [x, yr + 0.01, zr], 0.05, charcoal);
     }
-    rod([xD, EAVE_Y - 0.02, ezN], [xD, yM - 0.02, ezM], 0.05, charcoal);
 
     const fan = (pts) => {
-      const tris = [];
-      for (let i = 1; i < pts.length - 1; i++) tris.push(pts[0], pts[i], pts[i + 1]);
-      return tris;
+      const out = [];
+      for (let i = 1; i < pts.length - 1; i++) out.push(pts[0], pts[i], pts[i + 1]);
+      return out;
     };
     const boards = (px, py, pz) => [pz + px, py];
+    const gy = EAVE_Y - 0.06;
+    for (const r of regs) {
+      // Eave soffit, then the lined ceiling line inside; gutter along the eave.
+      if (r.zw > zLow) surface(quad([r.w0, r.y, r.ez], [r.w1, r.y, r.ez], [r.w1, r.y, r.zw], [r.w0, r.y, r.zw]), soffit);
+      surface(quad([r.w0, EAVE_Y, r.zw > zLow ? r.zw : r.ez], [r.w1, EAVE_Y, r.zw > zLow ? r.zw : r.ez], [r.w1, EAVE_Y, ezS], [r.w0, EAVE_Y, ezS]), soffit);
+      box(r.r1 - r.r0 + 0.05, 0.13, 0.12, (r.r0 + r.r1) / 2, r.y - 0.06, r.ez - 0.06, charcoal, layer.roofs);
+      if (r.zw > zLow) {
+        const x0 = Math.max(r.w0, W0), x1 = Math.min(r.w1, W1), zf = r.zw - 0.005;
+        surface(quad([x0, EAVE_Y, zf], [x1, EAVE_Y, zf], [x1, r.y, zf], [x0, r.y, zf]), weatherboard, boards);
+      }
+    }
+    // At each step: barge along the higher roof edge and weatherboard in the gap above the wall plate.
+    for (let i = 0; i < regs.length - 1; i++) {
+      const [lo, hi] = regs[i].zw < regs[i + 1].zw ? [regs[i], regs[i + 1]] : [regs[i + 1], regs[i]];
+      const xe = regs[i].r1, xw = regs[i].w1;
+      rod([xe, lo.y - 0.02, lo.ez], [xe, hi.y - 0.02, hi.ez], 0.05, charcoal);
+      surface(fan([[lo.ez, EAVE_Y], [hi.zw, EAVE_Y], [hi.zw, hi.y], [hi.ez, hi.y]].map(([z, y]) => [xw, y, z])), weatherboard, boards);
+    }
     // Gable ends: white weatherboard from the wall plate to the roof, with a louvred vent near the apex.
-    for (const [x, out, z0] of [[W0 - 0.005, -1, SN], [W1 + 0.005, 1, N0]]) {
+    for (const [x, out, z0] of [[W0 - 0.005, -1, regs[0].zw], [W1 + 0.005, 1, regs.at(-1).zw]]) {
       const pts = [[z0, EAVE_Y], [S0, EAVE_Y], [S0, roofY(S0)], [zr, yr], [z0, roofY(z0)]].map(([z, y]) => [x, y, z]);
       surface(fan(pts), weatherboard, boards);
       box(0.06, 0.5, 0.9, x + out * 0.03, yr - 0.6, zr, charcoal, layer.roofs);
       for (let i = 0; i < 4; i++) box(0.07, 0.03, 0.82, x + out * 0.05, yr - 0.79 + i * 0.12, zr, frame, layer.roofs);
     }
-    // Weatherboard where the roof steps: over the deck's east beam and above the wall east of the deck.
-    surface(fan([[ezN, EAVE_Y], [N0, EAVE_Y], [N0, yM], [ezM, yM]].map(([z, y]) => [xb, y, z])), weatherboard, boards);
-    surface(quad([xb, EAVE_Y, N0 - 0.005], [W1, EAVE_Y, N0 - 0.005], [W1, yM, N0 - 0.005], [xb, yM, N0 - 0.005]), weatherboard, boards);
 
-    // Gutters on every eave and downpipes.
-    const gy = EAVE_Y - 0.06, gM = yM - 0.06;
+    // Front gutter and downpipes.
     box(rx1 - rx0 + 0.1, 0.13, 0.12, (rx0 + rx1) / 2, gy, ezS + 0.06, charcoal, layer.roofs);
-    box(xD - rx0 + 0.05, 0.13, 0.12, (rx0 + xD) / 2, gy, ezN - 0.06, charcoal, layer.roofs);
-    box(rx1 - xD + 0.05, 0.13, 0.12, (xD + rx1) / 2, gM, ezM - 0.06, charcoal, layer.roofs);
-    for (const [x, wz, gz, g] of [
-      [W0 + 0.3, S0 + 0.04, ezS + 0.06, gy], [W1 - 0.3, S0 + 0.04, ezS + 0.06, gy],
-      [W0 + 0.3, SN - 0.04, ezN - 0.06, gy], [W1 - 0.3, N0 - 0.04, ezM - 0.06, gM], [xb, DN, ezN - 0.06, gy],
-    ]) {
+    const pipes = [[W0 + 0.3, S0 + 0.04, ezS + 0.06, gy], [W1 - 0.3, S0 + 0.04, ezS + 0.06, gy], [xb, DN, regs.find((r) => r.zw === zLow).ez - 0.06, gy]];
+    regs.forEach((r, i) => {
+      const x = i === regs.length - 1 ? W1 - 0.3 : i === 0 ? W0 + 0.3 : r.w0 + 0.3;
+      pipes.push([x, r.zw - 0.04, r.ez - 0.06, r.y - 0.06]);
+    });
+    for (const [x, wz, gz, g] of pipes) {
       box(0.1, g - 0.35, 0.05, x, (g - 0.35) / 2, wz, charcoal, layer.world);
       rod([x, g - 0.35, wz], [x, g, gz], 0.04, charcoal, layer.roofs, 6);
     }
@@ -1003,7 +1129,7 @@ function buildAfter(target, d) {
     battenFence(LOT_W, S0, LOT_W, LOT_D);
     battenFence(6.2, 27.6, 6.2, LOT_D);
     battenFence(W1 + 0.1, S0, LOT_W, S0, { gate: [0.1, 1.3] });
-    battenFence(0, S0, W0 - 0.1, S0, { gate: [0.1, 1.3] });
+    battenFence(0, S0, W0 - 0.1, S0, { gate: [0.1, Math.min(1.3, W0 - 0.2)] });
     const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.065, 1.15, 0.016), black, battens.length);
     battens.forEach((m, i) => inst.setMatrixAt(i, m));
     inst.castShadow = inst.receiveShadow = true;
@@ -1027,13 +1153,16 @@ function buildAfter(target, d) {
   }
   box(0.6, 0.04, 2.4, 19.68, 1.7, 12.0, aluminium);
   for (const z of [10.85, 13.15]) box(0.04, 0.5, 0.04, 19.95, 1.5, z, aluminium);
-  box(1.45, 0.04, 18.4, 19.22, 0.02, 12.4, concrete);
+  const pathZ0 = d.pathZ0 ?? 3.2;
+  box(1.45, 0.04, S0 - pathZ0, 19.22, 0.02, (pathZ0 + S0) / 2, concrete);
 
-  // Shed moved to the rear north-east corner.
-  shed(142.8, -826.9);
+  // Shed moved to the rear north-east corner, or the design's own outbuilding.
+  if (d.outbuilding) d.outbuilding({ wallM, roofSheet, stone });
+  else shed(142.8, -826.9);
 }
 buildAfter(after, designs.after);
 buildAfter(afterB, designs.afterB);
+buildAfter(afterC, designs.afterC);
 useLayer(before);
 
 
@@ -1059,7 +1188,7 @@ const roomRects = [
   ["Porch", 753, 1282, 1228, 1413],
 ];
 const roomRow = (name, w, d) => tr(name, `${fmt(w)} × ${fmt(d)} m &nbsp; ${fmt(w * d)} m²`);
-const schedule = { before: {}, after: {}, afterB: {} };
+const schedule = { before: {}, after: {}, afterB: {}, afterC: {} };
 {
   let total = 0;
   const list = roomRects.map(([name, x0, y0, x1, y1, note]) => {
@@ -1082,9 +1211,13 @@ const schedule = { before: {}, after: {}, afterB: {} };
     tr("Side setbacks", `W ${fmt(X(446))} m, E ${fmt(LOT_W - X(1913))} m`),
   ];
 }
-for (const [key, deck, wing, yard] of [
-  ["after", [5.0, 4.0], [6.0, 4.4], "14.2 m (9.8 to suite)"],
-  ["afterB", [6.0, 3.6], [9.05, 3.6], "14.2 m (10.6 to rear wing)"],
+for (const { key, deck, foot, enclosed, yard, sides, outb, bb } of [
+  { key: "after", deck: [5.0, 4.0], foot: "16.9 × 7.4 m + suite 6.0 × 4.4 m", enclosed: 16.9 * 7.42 + 6.0 * 4.4,
+    yard: "14.2 m (9.8 to suite)", sides: "W 1.5 m, E 1.6 m", outb: ["Shed", 3.0, 3.0], bb: "5 / 2 + WC / 2" },
+  { key: "afterB", deck: [6.0, 3.6], foot: "16.9 × 7.4 m + rear wing 9.05 × 3.6 m", enclosed: 16.9 * 7.42 + 9.05 * 3.6,
+    yard: "14.2 m (10.6 to rear wing)", sides: "W 1.5 m, E 1.6 m", outb: ["Shed", 3.0, 3.0], bb: "5 / 2 + WC / 2" },
+  { key: "afterC", deck: [5.0, 3.6], foot: "17.4 × 7.4 m + rear wing (stepped)", enclosed: 17.4 * 7.42 + 4.16 * 3.6 + 5.39 * 2.15,
+    yard: "14.2 m (10.6 to dining)", sides: "W 1.0 m, E 1.6 m", outb: ["Laundry studio", 3.8, 3.0], bb: "5 / 2 / 2" },
 ]) {
   let total = 0;
   const list = designs[key].rooms.map(([name, x0, z0, x1, z1]) => {
@@ -1093,16 +1226,16 @@ for (const [key, deck, wing, yard] of [
   });
   list.push(roomRow("Covered deck", ...deck));
   list.push(roomRow("Carport (open)", 5.8, 6.0));
-  list.push(roomRow("Shed", 3.0, 3.0));
+  list.push(roomRow(...outb));
   list.push(tr("Internal rooms total", `${fmt(total)} m²`, "total"));
   schedule[key].rooms = list;
   schedule[key].property = [
-    tr("House footprint", `16.9 × 7.4 m + rear wing ${fmt(wing[0], 2)} × ${fmt(wing[1])} m`),
-    tr("Enclosed floor", `${fmt(16.9 * 7.42 + wing[0] * wing[1])} m²`),
-    tr("Bed / bath / car", "5 / 2 + WC / 2"),
+    tr("House footprint", foot),
+    tr("Enclosed floor", `${fmt(enclosed)} m²`),
+    tr("Bed / bath / car", bb),
     tr("Front setback", `${fmt(LOT_D - HOUSE_SOUTH)} m`),
     tr("Rear yard", yard),
-    tr("Side setbacks", "W 1.5 m, E 1.6 m"),
+    tr("Side setbacks", sides),
   ];
 }
 schedule.before.note = "Internal sizes measured off the 2025 floor plan (wall to wall).";
@@ -1112,6 +1245,11 @@ schedule.afterB.note = "Option B, internal sizes. Changes from A: master suite a
   "the kitchen through a wide opening. The deck moves behind the bathroom wing, becomes larger and opens off the " +
   "dining room. The kitchen aisle is 1.1 m instead of 0.85 m, and the island seats three. Bathroom wing " +
   "windows facing the deck are high and frosted.";
+schedule.afterC.note = "Option C, internal sizes. Built on B: the WC, linen and laundry become Bed 4 (5.0 × 2.8 m). " +
+  "The old Bed 4 is now the master (4.0 × 3.4 m) with a walk-through robe to a small ensuite behind it, " +
+  "and the west wall moves out to 1.0 m from the fence. Linen goes into a tall bathroom cupboard. The laundry " +
+  "moves to a weatherboard studio by the side path, with a store. The 1.0 m west setback is under the usual " +
+  "1.5 m, so it needs a siting variation from council.";
 const propertyCommon = [
   tr("Land", "587 m² &nbsp; 20 × 29 m"),
   tr("Lot", "156 RP123045"),
@@ -1141,7 +1279,7 @@ function renderReno() {
   rows("reno-table", list);
 }
 
-const phases = { before, after, afterB };
+const phases = { before, after, afterB, afterC };
 function setPhase(phase) {
   for (const [k, p] of Object.entries(phases)) {
     for (const g of Object.values(p)) g.visible = k === phase;
