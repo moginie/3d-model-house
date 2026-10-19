@@ -1082,6 +1082,7 @@ function buildAfter(target, d) {
     }
 
     // Raked ceiling over d.raked [x0, x1]: lined to the underside of the roof, with plaster infill above the walls.
+    // The infill stays with the walls, so the raked height still shows with the roof off.
     if (d.raked) {
       const [x0, x1] = d.raked, z0 = regs.find((r) => r.w0 <= x0 && r.w1 >= x1).zw, yc = (z) => roofY(z) - 0.12;
       const lining = mat(0xf4f2ec, { side: THREE.BackSide, emissive: 0x8a8880 });
@@ -1089,7 +1090,7 @@ function buildAfter(target, d) {
         ...quad([x0, yc(zr), zr], [x1, yc(zr), zr], [x1, yc(S0), S0], [x0, yc(S0), S0])], lining);
       const infill = mat(0xf0eee6, { side: THREE.DoubleSide });
       for (const x of x0 === W0 ? [x1] : [x0, x1]) {
-        surface(fan([[z0, EAVE_Y], [S0, EAVE_Y], [S0, yc(S0)], [zr, yc(zr)], [z0, yc(z0)]].map(([z, y]) => [x, y, z])), infill);
+        surface(fan([[z0, EAVE_Y], [S0, EAVE_Y], [S0, yc(S0)], [zr, yc(zr)], [z0, yc(z0)]].map(([z, y]) => [x, y, z])), infill, null, layer.world);
       }
     }
 
